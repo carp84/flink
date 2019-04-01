@@ -56,7 +56,7 @@ public abstract class AbstractKeyedStateBackendBuilder<K>
 		StreamCompressionDecorator keyGroupCompressionDecorator,
 		CloseableRegistry cancelStreamRegistry) {
 		this.kvStateRegistry = kvStateRegistry;
-		this.keySerializerProvider = StateSerializerProvider.fromNewRegisteredSerializer(keySerializer);
+		this.keySerializerProvider = new StateSerializerProvider<>(keySerializer);
 		this.userCodeClassLoader = userCodeClassLoader;
 		this.numberOfKeyGroups = numberOfKeyGroups;
 		this.keyGroupRange = keyGroupRange;

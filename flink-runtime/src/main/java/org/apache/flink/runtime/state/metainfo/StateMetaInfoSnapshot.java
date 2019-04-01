@@ -99,7 +99,7 @@ public class StateMetaInfoSnapshot {
 	/**
 	 * TODO this variant, which requires providing the serializers,
 	 * TODO should actually be removed, leaving only {@link #StateMetaInfoSnapshot(String, BackendStateType, Map, Map)}.
-	 * TODO This is still used by snapshot extracting methods (i.e. computeSnapshot() method of specific state meta
+	 * TODO This is still used by snapshot extracting methods (i.e. snapshot() method of specific state meta
 	 * TODO info subclasses), and will be removed once all serializers have the restoreSerializer() factory method implemented.
 	 */
 	public StateMetaInfoSnapshot(

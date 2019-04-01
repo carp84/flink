@@ -42,14 +42,14 @@ public class RegisteredPriorityQueueStateBackendMetaInfo<T> extends RegisteredSt
 		@Nonnull String name,
 		@Nonnull TypeSerializer<T> elementSerializer) {
 
-		this(name, StateSerializerProvider.fromNewRegisteredSerializer(elementSerializer));
+		this(name, new StateSerializerProvider<>(elementSerializer));
 	}
 
 	@SuppressWarnings("unchecked")
 	public RegisteredPriorityQueueStateBackendMetaInfo(StateMetaInfoSnapshot snapshot) {
 		this(
 			snapshot.getName(),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<T>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.VALUE_SERIALIZER))));
 
@@ -62,12 +62,6 @@ public class RegisteredPriorityQueueStateBackendMetaInfo<T> extends RegisteredSt
 
 		super(name);
 		this.elementSerializerProvider = elementSerializerProvider;
-	}
-
-	@Nonnull
-	@Override
-	public StateMetaInfoSnapshot snapshot() {
-		return computeSnapshot();
 	}
 
 	@Nonnull
@@ -85,7 +79,9 @@ public class RegisteredPriorityQueueStateBackendMetaInfo<T> extends RegisteredSt
 		return elementSerializerProvider.previousSchemaSerializer();
 	}
 
-	private StateMetaInfoSnapshot computeSnapshot() {
+	@Nonnull
+	@Override
+	public StateMetaInfoSnapshot snapshot() {
 		TypeSerializer<T> elementSerializer = getElementSerializer();
 		Map<String, TypeSerializer<?>> serializerMap =
 			Collections.singletonMap(

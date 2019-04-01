@@ -23,7 +23,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSchemaCompatibility;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.UnloadableDummyTypeSerializer;
-import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -53,28 +52,26 @@ import static org.apache.flink.util.Preconditions.checkState;
  * @param <T> the type of the state.
  */
 @Internal
-public abstract class StateSerializerProvider<T> {
+public class StateSerializerProvider<T> {
 
 	/**
 	 * The registered serializer for the state.
 	 *
-	 * <p>In the case that this provider was created from a restored serializer snapshot via
-	 * {@link #fromPreviousSerializerSnapshot(TypeSerializerSnapshot)}, but a new serializer was never registered
-	 * for the state (i.e., this is the case if a restored state was never accessed), this would be {@code null}.
+	 * <p>In the case that this provider was created from a restored serializer snapshot but a new serializer was never
+	 * registered for the state (i.e., if a restored state was never accessed), this would be {@code null}.
 	 */
 	@Nullable
-	TypeSerializer<T> registeredSerializer;
+	private TypeSerializer<T> registeredSerializer;
 
 	/**
 	 * The state's previous serializer's snapshot.
 	 *
-	 * <p>In the case that this provider was created from a registered state serializer instance via
-	 * {@link #fromNewRegisteredSerializer(TypeSerializer)}, but a serializer snapshot was never supplied to this
-	 * provider (i.e. because the registered serializer was for a new state, not a restored one), this
-	 * would be {@code null}.
+	 * <p>In the case that this provider was created from a registered state serializer instance but a serializer snapshot
+	 * was never supplied to this provider (i.e. because the registered serializer was for a new state, not a restored one),
+	 * this would be {@code null}.
 	 */
 	@Nullable
-	TypeSerializerSnapshot<T> previousSerializerSnapshot;
+	private TypeSerializerSnapshot<T> previousSerializerSnapshot;
 
 	/**
 	 * The restore serializer, lazily created only when the restore serializer is accessed.
@@ -90,42 +87,23 @@ public abstract class StateSerializerProvider<T> {
 	private boolean isRegisteredWithIncompatibleSerializer = false;
 
 	/**
-	 * Creates a {@link StateSerializerProvider} for restored state from the previous serializer's snapshot.
+	 * Constructing a provider where a new state serializer instance is registered first, before any snapshots of the
+	 * previous state serializer is obtained.
 	 *
-	 * <p>Once a new serializer is registered for the state, it should be provided via
-	 * the {@link #registerNewSerializerForRestoredState(TypeSerializer)} method.
-	 *
-	 * @param stateSerializerSnapshot the previous serializer's snapshot.
-	 * @param <T> the type of the state.
-	 *
-	 * @return a new {@link StateSerializerProvider}.
+	 * @param stateSerializer the new serializer to register.
 	 */
-	public static <T> StateSerializerProvider<T> fromPreviousSerializerSnapshot(TypeSerializerSnapshot<T> stateSerializerSnapshot) {
-		return new LazilyRegisteredStateSerializerProvider<>(stateSerializerSnapshot);
-	}
-
-	/**
-	 * Creates a {@link StateSerializerProvider} from the registered state serializer.
-	 *
-	 * <p>If the state is a restored one, and the previous serializer's snapshot is
-	 * obtained later on, is should be supplied via the
-	 * {@link #setPreviousSerializerSnapshotForRestoredState(TypeSerializerSnapshot)} method.
-	 *
-	 * @param registeredStateSerializer the new state's registered serializer.
-	 * @param <T> the type of the state.
-	 *
-	 * @return a new {@link StateSerializerProvider}.
-	 */
-	public static <T> StateSerializerProvider<T> fromNewRegisteredSerializer(TypeSerializer<T> registeredStateSerializer) {
-		return new EagerlyRegisteredStateSerializerProvider<>(registeredStateSerializer);
-	}
-
-	private StateSerializerProvider(@Nonnull TypeSerializer<T> stateSerializer) {
+	public StateSerializerProvider(@Nonnull TypeSerializer<T> stateSerializer) {
 		this.registeredSerializer = stateSerializer;
 		this.previousSerializerSnapshot = null;
 	}
 
-	private StateSerializerProvider(@Nonnull TypeSerializerSnapshot<T> previousSerializerSnapshot) {
+	/**
+	 * Constructing a provider where a snapshot of the previous serializer is obtained before a new state serializer
+	 * is registered.
+	 *
+	 * @param previousSerializerSnapshot the snapshot of the previous serializer.
+	 */
+	public StateSerializerProvider(@Nonnull TypeSerializerSnapshot<T> previousSerializerSnapshot) {
 		this.previousSerializerSnapshot = previousSerializerSnapshot;
 		this.registeredSerializer = null;
 	}
@@ -176,7 +154,7 @@ public abstract class StateSerializerProvider<T> {
 	 * @return a serializer that reads and writes in the previous schema of the state.
 	 */
 	@Nonnull
-	public final TypeSerializer<T> previousSchemaSerializer() {
+	final TypeSerializer<T> previousSchemaSerializer() {
 		if (cachedRestoredSerializer != null) {
 			return cachedRestoredSerializer;
 		}
@@ -188,7 +166,7 @@ public abstract class StateSerializerProvider<T> {
 
 		this.cachedRestoredSerializer = previousSerializerSnapshot.restoreSerializer();
 		return cachedRestoredSerializer;
-	};
+	}
 
 	/**
 	 * For restored state, register a new serializer that potentially has a new serialization schema.
@@ -216,7 +194,24 @@ public abstract class StateSerializerProvider<T> {
 	 * @return the schema compatibility of the new registered serializer, with respect to the previous serializer.
 	 */
 	@Nonnull
-	public abstract TypeSerializerSchemaCompatibility<T> registerNewSerializerForRestoredState(TypeSerializer<T> newSerializer);
+	TypeSerializerSchemaCompatibility<T> registerNewSerializerForRestoredState(TypeSerializer<T> newSerializer) {
+		checkNotNull(newSerializer);
+		if (registeredSerializer != null) {
+			throw new UnsupportedOperationException("A serializer has already been registered for the state; re-registration is not allowed.");
+		}
+		checkNotNull(this.previousSerializerSnapshot, "The previous serializer snapshot shouldn't be null.");
+
+		TypeSerializerSchemaCompatibility<T> result = previousSerializerSnapshot.resolveSchemaCompatibility(newSerializer);
+		if (result.isIncompatible()) {
+			invalidateCurrentSchemaSerializerAccess();
+		}
+		if (result.isCompatibleWithReconfiguredSerializer()) {
+			this.registeredSerializer = result.getReconfiguredSerializer();
+		} else {
+			this.registeredSerializer = newSerializer;
+		}
+		return result;
+	}
 
 	/**
 	 * For restored state, set the state's previous serializer's snapshot.
@@ -246,7 +241,25 @@ public abstract class StateSerializerProvider<T> {
 	 * @return the schema compatibility of the initially registered serializer, with respect to the previous serializer.
 	 */
 	@Nonnull
-	public abstract TypeSerializerSchemaCompatibility<T> setPreviousSerializerSnapshotForRestoredState(TypeSerializerSnapshot<T> previousSerializerSnapshot);
+	public TypeSerializerSchemaCompatibility<T> setPreviousSerializerSnapshotForRestoredState(
+		TypeSerializerSnapshot<T> previousSerializerSnapshot) {
+		checkNotNull(previousSerializerSnapshot);
+		if (this.previousSerializerSnapshot != null) {
+			throw new UnsupportedOperationException("The snapshot of the state's previous serializer has already been set; cannot reset.");
+		}
+		checkNotNull(this.registeredSerializer, "The registered serializer shouldn't be null.");
+
+		this.previousSerializerSnapshot = previousSerializerSnapshot;
+
+		TypeSerializerSchemaCompatibility<T> result = previousSerializerSnapshot.resolveSchemaCompatibility(registeredSerializer);
+		if (result.isIncompatible()) {
+			invalidateCurrentSchemaSerializerAccess();
+		}
+		if (result.isCompatibleWithReconfiguredSerializer()) {
+			this.registeredSerializer = result.getReconfiguredSerializer();
+		}
+		return result;
+	}
 
 	/**
 	 * Invalidates access to the current schema serializer. This lets {@link #currentSchemaSerializer()}
@@ -257,84 +270,7 @@ public abstract class StateSerializerProvider<T> {
 	 * {@link #setPreviousSerializerSnapshotForRestoredState(TypeSerializerSnapshot)}
 	 * once the registered serializer is determined to be incompatible.
 	 */
-	protected final void invalidateCurrentSchemaSerializerAccess() {
+	private void invalidateCurrentSchemaSerializerAccess() {
 		this.isRegisteredWithIncompatibleSerializer = true;
-	}
-
-	/**
-	 * Implementation of the {@link StateSerializerProvider} for the case where a snapshot of the
-	 * previous serializer is obtained before a new state serializer is registered (hence, the naming "lazily" registered).
-	 */
-	private static class LazilyRegisteredStateSerializerProvider<T> extends StateSerializerProvider<T> {
-
-		LazilyRegisteredStateSerializerProvider(TypeSerializerSnapshot<T> previousSerializerSnapshot) {
-			super(Preconditions.checkNotNull(previousSerializerSnapshot));
-		}
-
-		@Nonnull
-		@Override
-		@SuppressWarnings("ConstantConditions")
-		public TypeSerializerSchemaCompatibility<T> registerNewSerializerForRestoredState(TypeSerializer<T> newSerializer) {
-			checkNotNull(newSerializer);
-			if (registeredSerializer != null) {
-				throw new UnsupportedOperationException("A serializer has already been registered for the state; re-registration is not allowed.");
-			}
-
-			TypeSerializerSchemaCompatibility<T> result = previousSerializerSnapshot.resolveSchemaCompatibility(newSerializer);
-			if (result.isIncompatible()) {
-				invalidateCurrentSchemaSerializerAccess();
-			}
-			if (result.isCompatibleWithReconfiguredSerializer()) {
-				this.registeredSerializer = result.getReconfiguredSerializer();
-			} else {
-				this.registeredSerializer = newSerializer;
-			}
-			return result;
-		}
-
-		@Nonnull
-		@Override
-		public TypeSerializerSchemaCompatibility<T> setPreviousSerializerSnapshotForRestoredState(
-				TypeSerializerSnapshot<T> previousSerializerSnapshot) {
-			throw new UnsupportedOperationException("The snapshot of the state's previous serializer has already been set; cannot reset.");
-		}
-	}
-
-	/**
-	 * Implementation of the {@link StateSerializerProvider} for the case where a new state
-	 * serializer instance is registered first, before any snapshots of the previous state serializer
-	 * is obtained (hence, the naming "eagerly" registered).
-	 */
-	private static class EagerlyRegisteredStateSerializerProvider<T> extends StateSerializerProvider<T> {
-
-		EagerlyRegisteredStateSerializerProvider(TypeSerializer<T> registeredStateSerializer) {
-			super(Preconditions.checkNotNull(registeredStateSerializer));
-		}
-
-		@Nonnull
-		@Override
-		public TypeSerializerSchemaCompatibility<T> registerNewSerializerForRestoredState(TypeSerializer<T> newSerializer) {
-			throw new UnsupportedOperationException("A serializer has already been registered for the state; re-registration is not allowed.");
-		}
-
-		@Nonnull
-		@Override
-		public TypeSerializerSchemaCompatibility<T> setPreviousSerializerSnapshotForRestoredState(TypeSerializerSnapshot<T> previousSerializerSnapshot) {
-			checkNotNull(previousSerializerSnapshot);
-			if (this.previousSerializerSnapshot != null) {
-				throw new UnsupportedOperationException("The snapshot of the state's previous serializer has already been set; cannot reset.");
-			}
-
-			this.previousSerializerSnapshot = previousSerializerSnapshot;
-
-			TypeSerializerSchemaCompatibility<T> result = previousSerializerSnapshot.resolveSchemaCompatibility(registeredSerializer);
-			if (result.isIncompatible()) {
-				invalidateCurrentSchemaSerializerAccess();
-			}
-			if (result.isCompatibleWithReconfiguredSerializer()) {
-				this.registeredSerializer = result.getReconfiguredSerializer();
-			}
-			return result;
-		}
 	}
 }

@@ -105,7 +105,7 @@ public abstract class AbstractKeyedStateBackend<K> implements
 		CloseableRegistry cancelStreamRegistry) {
 		this(
 			kvStateRegistry,
-			StateSerializerProvider.fromNewRegisteredSerializer(keySerializer),
+			new StateSerializerProvider<>(keySerializer),
 			userCodeClassLoader,
 			numberOfKeyGroups,
 			keyGroupRange,

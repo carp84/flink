@@ -28,7 +28,6 @@ import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,8 +60,8 @@ public class RegisteredKeyValueStateBackendMetaInfo<N, S> extends RegisteredStat
 		this(
 			stateType,
 			name,
-			StateSerializerProvider.fromNewRegisteredSerializer(namespaceSerializer),
-			StateSerializerProvider.fromNewRegisteredSerializer(stateSerializer),
+			new StateSerializerProvider<>(namespaceSerializer),
+			new StateSerializerProvider<>(stateSerializer),
 			StateSnapshotTransformFactory.noTransform());
 	}
 
@@ -76,8 +75,8 @@ public class RegisteredKeyValueStateBackendMetaInfo<N, S> extends RegisteredStat
 		this(
 			stateType,
 			name,
-			StateSerializerProvider.fromNewRegisteredSerializer(namespaceSerializer),
-			StateSerializerProvider.fromNewRegisteredSerializer(stateSerializer),
+			new StateSerializerProvider<>(namespaceSerializer),
+			new StateSerializerProvider<>(stateSerializer),
 			stateSnapshotTransformFactory);
 	}
 
@@ -86,10 +85,10 @@ public class RegisteredKeyValueStateBackendMetaInfo<N, S> extends RegisteredStat
 		this(
 			StateDescriptor.Type.valueOf(snapshot.getOption(StateMetaInfoSnapshot.CommonOptionsKeys.KEYED_STATE_TYPE)),
 			snapshot.getName(),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<N>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.NAMESPACE_SERIALIZER))),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<S>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.VALUE_SERIALIZER))),
 			StateSnapshotTransformFactory.noTransform());
@@ -198,12 +197,6 @@ public class RegisteredKeyValueStateBackendMetaInfo<N, S> extends RegisteredStat
 		return result;
 	}
 
-	@Nonnull
-	@Override
-	public StateMetaInfoSnapshot snapshot() {
-		return computeSnapshot();
-	}
-
 	public void checkStateMetaInfo(StateDescriptor<?, ?> stateDesc) {
 
 		Preconditions.checkState(
@@ -222,7 +215,8 @@ public class RegisteredKeyValueStateBackendMetaInfo<N, S> extends RegisteredStat
 	}
 
 	@Nonnull
-	private StateMetaInfoSnapshot computeSnapshot() {
+	@Override
+	public StateMetaInfoSnapshot snapshot() {
 		Map<String, String> optionsMap = Collections.singletonMap(
 			StateMetaInfoSnapshot.CommonOptionsKeys.KEYED_STATE_TYPE.toString(),
 			stateType.toString());

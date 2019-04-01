@@ -56,7 +56,7 @@ public class RegisteredOperatorStateBackendMetaInfo<S> extends RegisteredStateMe
 			@Nonnull OperatorStateHandle.Mode assignmentMode) {
 		this(
 			name,
-			StateSerializerProvider.fromNewRegisteredSerializer(partitionStateSerializer),
+			new StateSerializerProvider<>(partitionStateSerializer),
 			assignmentMode);
 	}
 
@@ -71,7 +71,7 @@ public class RegisteredOperatorStateBackendMetaInfo<S> extends RegisteredStateMe
 	public RegisteredOperatorStateBackendMetaInfo(@Nonnull StateMetaInfoSnapshot snapshot) {
 		this(
 			snapshot.getName(),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<S>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.VALUE_SERIALIZER))),
 			OperatorStateHandle.Mode.valueOf(
@@ -95,12 +95,6 @@ public class RegisteredOperatorStateBackendMetaInfo<S> extends RegisteredStateMe
 	@Nonnull
 	public RegisteredOperatorStateBackendMetaInfo<S> deepCopy() {
 		return new RegisteredOperatorStateBackendMetaInfo<>(this);
-	}
-
-	@Nonnull
-	@Override
-	public StateMetaInfoSnapshot snapshot() {
-		return computeSnapshot();
 	}
 
 	@Nonnull
@@ -157,7 +151,8 @@ public class RegisteredOperatorStateBackendMetaInfo<S> extends RegisteredStateMe
 	}
 
 	@Nonnull
-	private StateMetaInfoSnapshot computeSnapshot() {
+	@Override
+	public StateMetaInfoSnapshot snapshot() {
 		Map<String, String> optionsMap = Collections.singletonMap(
 			StateMetaInfoSnapshot.CommonOptionsKeys.OPERATOR_STATE_DISTRIBUTION_MODE.toString(),
 			assignmentMode.toString());

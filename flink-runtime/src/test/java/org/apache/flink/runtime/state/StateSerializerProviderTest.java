@@ -27,8 +27,6 @@ import org.apache.flink.runtime.testutils.statemigration.TestType;
 
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -43,14 +41,14 @@ public class StateSerializerProviderTest {
 
 	@Test
 	public void testCurrentSchemaSerializerForEagerlyRegisteredStateSerializerProvider() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.V1TestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.V1TestTypeSerializer());
 		assertTrue(testProvider.currentSchemaSerializer() instanceof TestType.V1TestTypeSerializer);
 	}
 
 	@Test
 	public void testCurrentSchemaSerializerForLazilyRegisteredStateSerializerProvider() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 		assertTrue(testProvider.currentSchemaSerializer() instanceof TestType.V1TestTypeSerializer);
 	}
 
@@ -60,7 +58,7 @@ public class StateSerializerProviderTest {
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testPreviousSchemaSerializerForEagerlyRegisteredStateSerializerProvider() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.V1TestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.V1TestTypeSerializer());
 
 		// this should fail with an exception
 		testProvider.previousSchemaSerializer();
@@ -69,7 +67,7 @@ public class StateSerializerProviderTest {
 	@Test
 	public void testPreviousSchemaSerializerForLazilyRegisteredStateSerializerProvider() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 		assertTrue(testProvider.previousSchemaSerializer() instanceof TestType.V1TestTypeSerializer);
 	}
 
@@ -78,7 +76,7 @@ public class StateSerializerProviderTest {
 		// create the provider with an exception throwing snapshot;
 		// this would throw an exception if the restore serializer was eagerly accessed
 		StateSerializerProvider<String> testProvider =
-			StateSerializerProvider.fromPreviousSerializerSnapshot(new ExceptionThrowingSerializerSnapshot());
+			new StateSerializerProvider<>(new ExceptionThrowingSerializerSnapshot());
 
 		try {
 			// if we fail here, that means the restore serializer was indeed lazily accessed
@@ -95,14 +93,14 @@ public class StateSerializerProviderTest {
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testRegisterNewSerializerWithEagerlyRegisteredStateSerializerProviderShouldFail() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.V1TestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.V1TestTypeSerializer());
 		testProvider.registerNewSerializerForRestoredState(new TestType.V2TestTypeSerializer());
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testRegisterNewSerializerTwiceWithLazilyRegisteredStateSerializerProviderShouldFail() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		testProvider.registerNewSerializerForRestoredState(new TestType.V2TestTypeSerializer());
 
@@ -113,7 +111,7 @@ public class StateSerializerProviderTest {
 	@Test
 	public void testLazilyRegisterNewCompatibleAsIsSerializer() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		// register compatible serializer for state
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -127,7 +125,7 @@ public class StateSerializerProviderTest {
 	@Test
 	public void testLazilyRegisterNewCompatibleAfterMigrationSerializer() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		// register serializer that requires migration for state
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -141,7 +139,7 @@ public class StateSerializerProviderTest {
 	@Test
 	public void testLazilyRegisterNewSerializerRequiringReconfiguration() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		// register serializer that requires reconfiguration, and verify that
 		// the resulting current schema serializer is the reconfigured one
@@ -154,7 +152,7 @@ public class StateSerializerProviderTest {
 	@Test
 	public void testLazilyRegisterIncompatibleSerializer() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		// register serializer that requires migration for state
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -178,7 +176,7 @@ public class StateSerializerProviderTest {
 	@Test(expected = UnsupportedOperationException.class)
 	public void testSetSerializerSnapshotWithLazilyRegisteredSerializerProviderShouldFail() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromPreviousSerializerSnapshot(serializer.snapshotConfiguration());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer.snapshotConfiguration());
 
 		testProvider.setPreviousSerializerSnapshotForRestoredState(serializer.snapshotConfiguration());
 	}
@@ -186,7 +184,7 @@ public class StateSerializerProviderTest {
 	@Test(expected = UnsupportedOperationException.class)
 	public void testSetSerializerSnapshotTwiceWithEagerlyRegisteredSerializerProviderShouldFail() {
 		TestType.V1TestTypeSerializer serializer = new TestType.V1TestTypeSerializer();
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(serializer);
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(serializer);
 
 		testProvider.setPreviousSerializerSnapshotForRestoredState(serializer.snapshotConfiguration());
 
@@ -196,7 +194,7 @@ public class StateSerializerProviderTest {
 
 	@Test
 	public void testEagerlyRegisterNewCompatibleAsIsSerializer() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.V1TestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.V1TestTypeSerializer());
 
 		// set previous serializer snapshot for state, which should let the new serializer be considered compatible as is
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -209,7 +207,7 @@ public class StateSerializerProviderTest {
 
 	@Test
 	public void testEagerlyRegisterCompatibleAfterMigrationSerializer() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.V2TestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.V2TestTypeSerializer());
 
 		// set previous serializer snapshot for state, which should let the new serializer be considered compatible after migration
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -222,7 +220,7 @@ public class StateSerializerProviderTest {
 
 	@Test
 	public void testEagerlyRegisterNewSerializerRequiringReconfiguration() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.ReconfigurationRequiringTestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.ReconfigurationRequiringTestTypeSerializer());
 
 		// set previous serializer snapshot, which should let the new serializer be considered to require reconfiguration,
 		// and verify that the resulting current schema serializer is the reconfigured one
@@ -234,7 +232,7 @@ public class StateSerializerProviderTest {
 
 	@Test
 	public void testEagerlyRegisterIncompatibleSerializer() {
-		StateSerializerProvider<TestType> testProvider = StateSerializerProvider.fromNewRegisteredSerializer(new TestType.IncompatibleTestTypeSerializer());
+		StateSerializerProvider<TestType> testProvider = new StateSerializerProvider<>(new TestType.IncompatibleTestTypeSerializer());
 
 		// set previous serializer snapshot for state, which should let the new serializer be considered incompatible
 		TypeSerializerSchemaCompatibility<TestType> schemaCompatibility =
@@ -263,12 +261,12 @@ public class StateSerializerProviderTest {
 		}
 
 		@Override
-		public void writeSnapshot(DataOutputView out) throws IOException {
+		public void writeSnapshot(DataOutputView out) {
 			throw new UnsupportedOperationException();
 		}
 
 		@Override
-		public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader) throws IOException {
+		public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader) {
 			throw new UnsupportedOperationException();
 		}
 

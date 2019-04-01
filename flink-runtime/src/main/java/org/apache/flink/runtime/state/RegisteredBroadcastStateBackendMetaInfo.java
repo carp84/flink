@@ -55,8 +55,8 @@ public class RegisteredBroadcastStateBackendMetaInfo<K, V> extends RegisteredSta
 		this(
 			name,
 			assignmentMode,
-			StateSerializerProvider.fromNewRegisteredSerializer(keySerializer),
-			StateSerializerProvider.fromNewRegisteredSerializer(valueSerializer));
+			new StateSerializerProvider<>(keySerializer),
+			new StateSerializerProvider<>(valueSerializer));
 	}
 
 	public RegisteredBroadcastStateBackendMetaInfo(@Nonnull RegisteredBroadcastStateBackendMetaInfo<K, V> copy) {
@@ -73,10 +73,10 @@ public class RegisteredBroadcastStateBackendMetaInfo<K, V> extends RegisteredSta
 			snapshot.getName(),
 			OperatorStateHandle.Mode.valueOf(
 				snapshot.getOption(StateMetaInfoSnapshot.CommonOptionsKeys.OPERATOR_STATE_DISTRIBUTION_MODE)),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<K>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.KEY_SERIALIZER))),
-			StateSerializerProvider.fromPreviousSerializerSnapshot(
+			new StateSerializerProvider<>(
 				(TypeSerializerSnapshot<V>) Preconditions.checkNotNull(
 					snapshot.getTypeSerializerSnapshot(StateMetaInfoSnapshot.CommonSerializerKeys.VALUE_SERIALIZER))));
 
@@ -102,12 +102,6 @@ public class RegisteredBroadcastStateBackendMetaInfo<K, V> extends RegisteredSta
 		this.assignmentMode = assignmentMode;
 		this.keySerializerProvider = keySerializerProvider;
 		this.valueSerializerProvider = valueSerializerProvider;
-	}
-
-	@Nonnull
-	@Override
-	public StateMetaInfoSnapshot snapshot() {
-		return computeSnapshot();
 	}
 
 	@Nonnull
@@ -184,7 +178,8 @@ public class RegisteredBroadcastStateBackendMetaInfo<K, V> extends RegisteredSta
 	}
 
 	@Nonnull
-	private StateMetaInfoSnapshot computeSnapshot() {
+	@Override
+	public StateMetaInfoSnapshot snapshot() {
 		Map<String, String> optionsMap = Collections.singletonMap(
 			StateMetaInfoSnapshot.CommonOptionsKeys.OPERATOR_STATE_DISTRIBUTION_MODE.toString(),
 			assignmentMode.toString());
