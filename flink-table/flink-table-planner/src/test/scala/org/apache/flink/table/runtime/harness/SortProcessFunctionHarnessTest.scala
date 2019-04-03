@@ -186,37 +186,37 @@ class SortProcessFunctionHarnessTest {
    testHarness.setTimeCharacteristic(TimeCharacteristic.EventTime)
    testHarness.processWatermark(3)
 
-      // timestamp is ignored in processing time
+      // timestamp must be set in event time
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 11L: JLong, 1: JInt, "aaa", 1001L: JLong), true)))
+      Row.of(1: JInt, 11L: JLong, 1: JInt, "aaa", 1001L: JLong), true), 1001L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 12L: JLong, 1: JInt, "aaa", 2002L: JLong), true)))
+      Row.of(1: JInt, 12L: JLong, 1: JInt, "aaa", 2002L: JLong), true), 2002L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 13L: JLong, 2: JInt, "aaa", 2002L: JLong), true)))
+      Row.of(1: JInt, 13L: JLong, 2: JInt, "aaa", 2002L: JLong), true), 2002L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2002L: JLong), true)))
+      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2002L: JLong), true), 2002L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 14L: JLong, 0: JInt, "aaa", 2002L: JLong), true)))
+      Row.of(1: JInt, 14L: JLong, 0: JInt, "aaa", 2002L: JLong), true), 2002L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2004L: JLong), true)))
+      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2004L: JLong), true), 2004L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 10L: JLong, 0: JInt, "aaa", 2006L: JLong), true)))
+      Row.of(1: JInt, 10L: JLong, 0: JInt, "aaa", 2006L: JLong), true), 2006L))
 
     // move watermark forward
     testHarness.processWatermark(2007)
 
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 20L: JLong, 1: JInt, "aaa", 2008L: JLong), true)))
+      Row.of(1: JInt, 20L: JLong, 1: JInt, "aaa", 2008L: JLong), true), 2008L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 14L: JLong, 0: JInt, "aaa", 2002L: JLong), true))) // too late
+      Row.of(1: JInt, 14L: JLong, 0: JInt, "aaa", 2002L: JLong), true), 2002L)) // too late
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2019L: JLong), true))) // too early
+      Row.of(1: JInt, 12L: JLong, 3: JInt, "aaa", 2019L: JLong), true), 2019L)) // too early
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 20L: JLong, 2: JInt, "aaa", 2008L: JLong), true)))
+      Row.of(1: JInt, 20L: JLong, 2: JInt, "aaa", 2008L: JLong), true), 2008L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 10L: JLong, 0: JInt, "aaa", 2010L: JLong), true)))
+      Row.of(1: JInt, 10L: JLong, 0: JInt, "aaa", 2010L: JLong), true), 2010L))
     testHarness.processElement(new StreamRecord(new CRow(
-      Row.of(1: JInt, 19L: JLong, 0: JInt, "aaa", 2008L: JLong), true)))
+      Row.of(1: JInt, 19L: JLong, 0: JInt, "aaa", 2008L: JLong), true), 2008L))
 
     // move watermark forward
     testHarness.processWatermark(2012)
@@ -228,6 +228,7 @@ class SortProcessFunctionHarnessTest {
     // all elements at the same proc timestamp have the same value
     // elements should be sorted ascending on field 1 and descending on field 2
     // (10,0) (11,1) (12,2) (12,1) (12,0)
+    // event time is erased in RowTimeSortProcessFunction#onTimer
     expectedOutput.add(new Watermark(3))
     expectedOutput.add(new StreamRecord(new CRow(
       Row.of(1: JInt, 11L: JLong, 1: JInt, "aaa", 1001L: JLong), true)))

@@ -54,6 +54,7 @@ import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.StateSnapshotContextSynchronousImpl;
 import org.apache.flink.runtime.state.VoidNamespace;
 import org.apache.flink.runtime.state.VoidNamespaceSerializer;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
@@ -621,6 +622,19 @@ public abstract class AbstractStreamOperator<OUT>
 	}
 
 	private <T> void setCurrentSystemTimeStamp(StreamRecord<T> record) {
+		TimeCharacteristic timeCharacteristic = this.config.getTimeCharacteristic();
+		switch (timeCharacteristic) {
+			case EventTime:
+			case IngestionTime:
+				checkAndSetStateTimeStamp(record);
+				break;
+			case ProcessingTime:
+			default:
+				break;
+		}
+	}
+
+	private <T> void checkAndSetStateTimeStamp(StreamRecord<T> record) {
 		if (keyedStateBackend != null) {
 			Preconditions.checkArgument(record.hasTimestamp());
 			keyedStateBackend.setCurrentSystemTimeStamp(record.getTimestamp());

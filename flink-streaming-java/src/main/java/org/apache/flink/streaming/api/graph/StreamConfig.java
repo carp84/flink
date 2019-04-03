@@ -22,7 +22,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.runtime.operators.util.CorruptConfigurationException;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.util.ClassLoaderUtil;
 import org.apache.flink.streaming.api.CheckpointingMode;
@@ -129,12 +128,8 @@ public class StreamConfig implements Serializable {
 	}
 
 	public TimeCharacteristic getTimeCharacteristic() {
-		int ordinal = config.getInteger(TIME_CHARACTERISTIC, -1);
-		if (ordinal >= 0) {
-			return TimeCharacteristic.values()[ordinal];
-		} else {
-			throw new CorruptConfigurationException("time characteristic is not set");
-		}
+		int ordinal = config.getInteger(TIME_CHARACTERISTIC, 0);
+		return TimeCharacteristic.values()[ordinal];
 	}
 
 	public void setTypeSerializerIn1(TypeSerializer<?> serializer) {
