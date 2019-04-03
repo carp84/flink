@@ -18,11 +18,44 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
+import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
+import org.apache.flink.util.Preconditions;
+
+import javax.annotation.Nonnull;
+
 /**
  * Provides time to TTL logic to judge about state expiration.
  */
-public interface TtlTimeProvider {
-	TtlTimeProvider DEFAULT = System::currentTimeMillis;
+public class TtlTimeProvider {
+	public static final TtlTimeProvider DEFAULT = new TtlTimeProvider(TtlTimeCharacteristic.ProcessingTime);
 
-	long currentTimestamp();
+	private final TtlTimeCharacteristic ttlTimeCharacteristic;
+	private AbstractKeyedStateBackend keyedStateBackend;
+
+	public TtlTimeProvider(TtlTimeCharacteristic ttlTimeCharacteristic) {
+		this.ttlTimeCharacteristic = ttlTimeCharacteristic;
+	}
+
+	public long currentTimestamp() {
+		switch (ttlTimeCharacteristic) {
+			case ProcessingTime:
+				return System.currentTimeMillis();
+			case IngestionTime:
+			case EventTime:
+				Preconditions.checkNotNull(this.keyedStateBackend,
+					"Cannot get timestamp before keyed backend is set");
+				return keyedStateBackend.getCurrentTimestamp();
+			default:
+				throw new IllegalStateException("Unknown ttl time characteristic: " + ttlTimeCharacteristic);
+		}
+	}
+
+	public void setKeyedStateBackend(@Nonnull AbstractKeyedStateBackend keyedStateBackend) {
+		this.keyedStateBackend = keyedStateBackend;
+	}
+
+	public TtlTimeCharacteristic getTtlTimeCharacteristic() {
+		return this.ttlTimeCharacteristic;
+	}
 }

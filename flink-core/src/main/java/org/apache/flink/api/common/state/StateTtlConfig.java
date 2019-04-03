@@ -90,7 +90,11 @@ public class StateTtlConfig implements Serializable {
 	 */
 	public enum TtlTimeCharacteristic {
 		/** Processing time, see also <code>org.apache.flink.streaming.api.TimeCharacteristic.ProcessingTime</code>. */
-		ProcessingTime
+		ProcessingTime,
+		/** Ingestion time, see also <code>org.apache.flink.streaming.api.TimeCharacteristic.IngestionTime</code>. */
+		IngestionTime,
+		/** Event time, see also <code>org.apache.flink.streaming.api.TimeCharacteristic.EventTime</code>. */
+		EventTime
 	}
 
 	private final UpdateType updateType;

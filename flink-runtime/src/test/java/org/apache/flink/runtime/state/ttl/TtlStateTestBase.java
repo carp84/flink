@@ -65,7 +65,7 @@ public abstract class TtlStateTestBase {
 
 	@Before
 	public void setup() {
-		timeProvider = new MockTtlTimeProvider();
+		timeProvider = new MockTtlTimeProvider(StateTtlConfig.TtlTimeCharacteristic.ProcessingTime);
 		sbetc = createStateBackendTestContext(timeProvider);
 	}
 
