@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
@@ -35,11 +36,13 @@ abstract class TtlStateSnapshotTransformer<T> implements CollectionStateSnapshot
 	private final TtlTimeProvider ttlTimeProvider;
 	final long ttl;
 	private final DataInputDeserializer div;
+	final TtlTimeCharacteristic ttlTimeCharacteristic;
 
-	TtlStateSnapshotTransformer(@Nonnull TtlTimeProvider ttlTimeProvider, long ttl) {
+	TtlStateSnapshotTransformer(@Nonnull TtlTimeProvider ttlTimeProvider, long ttl, TtlTimeCharacteristic ttlTimeCharacteristic) {
 		this.ttlTimeProvider = ttlTimeProvider;
 		this.ttl = ttl;
 		this.div = new DataInputDeserializer();
+		this.ttlTimeCharacteristic = ttlTimeCharacteristic;
 	}
 
 	<V> TtlValue<V> filterTtlValue(TtlValue<V> value) {
@@ -51,7 +54,7 @@ abstract class TtlStateSnapshotTransformer<T> implements CollectionStateSnapshot
 	}
 
 	boolean expired(long ts) {
-		return TtlUtils.expired(ts, ttl, ttlTimeProvider);
+		return TtlUtils.expired(ts, ttl, ttlTimeProvider, ttlTimeCharacteristic);
 	}
 
 	long deserializeTs(byte[] value) throws IOException {
@@ -65,8 +68,11 @@ abstract class TtlStateSnapshotTransformer<T> implements CollectionStateSnapshot
 	}
 
 	static class TtlDeserializedValueStateSnapshotTransformer<T> extends TtlStateSnapshotTransformer<TtlValue<T>> {
-		TtlDeserializedValueStateSnapshotTransformer(TtlTimeProvider ttlTimeProvider, long ttl) {
-			super(ttlTimeProvider, ttl);
+		TtlDeserializedValueStateSnapshotTransformer(
+			TtlTimeProvider ttlTimeProvider,
+			long ttl,
+			TtlTimeCharacteristic ttlTimeCharacteristic) {
+			super(ttlTimeProvider, ttl, ttlTimeCharacteristic);
 		}
 
 		@Override
@@ -77,8 +83,11 @@ abstract class TtlStateSnapshotTransformer<T> implements CollectionStateSnapshot
 	}
 
 	static class TtlSerializedValueStateSnapshotTransformer extends TtlStateSnapshotTransformer<byte[]> {
-		TtlSerializedValueStateSnapshotTransformer(TtlTimeProvider ttlTimeProvider, long ttl) {
-			super(ttlTimeProvider, ttl);
+		TtlSerializedValueStateSnapshotTransformer(
+			TtlTimeProvider ttlTimeProvider,
+			long ttl,
+			TtlTimeCharacteristic ttlTimeCharacteristic) {
+			super(ttlTimeProvider, ttl, ttlTimeCharacteristic);
 		}
 
 		@Override
@@ -100,20 +109,22 @@ abstract class TtlStateSnapshotTransformer<T> implements CollectionStateSnapshot
 	static class Factory<T> implements StateSnapshotTransformFactory<TtlValue<T>> {
 		private final TtlTimeProvider ttlTimeProvider;
 		private final long ttl;
+		private final TtlTimeCharacteristic ttlTimeCharacteristic;
 
-		Factory(@Nonnull TtlTimeProvider ttlTimeProvider, long ttl) {
+		Factory(@Nonnull TtlTimeProvider ttlTimeProvider, long ttl, TtlTimeCharacteristic ttlTimeCharacteristic) {
 			this.ttlTimeProvider = ttlTimeProvider;
 			this.ttl = ttl;
+			this.ttlTimeCharacteristic = ttlTimeCharacteristic;
 		}
 
 		@Override
 		public Optional<StateSnapshotTransformer<TtlValue<T>>> createForDeserializedState() {
-			return Optional.of(new TtlDeserializedValueStateSnapshotTransformer<>(ttlTimeProvider, ttl));
+			return Optional.of(new TtlDeserializedValueStateSnapshotTransformer<>(ttlTimeProvider, ttl, ttlTimeCharacteristic));
 		}
 
 		@Override
 		public Optional<StateSnapshotTransformer<byte[]>> createForSerializedState() {
-			return Optional.of(new TtlSerializedValueStateSnapshotTransformer(ttlTimeProvider, ttl));
+			return Optional.of(new TtlSerializedValueStateSnapshotTransformer(ttlTimeProvider, ttl, ttlTimeCharacteristic));
 		}
 	}
 }

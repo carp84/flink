@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.tests;
 
+import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -30,7 +31,7 @@ import java.io.Serializable;
  * processing time increases monotonically.
  */
 @NotThreadSafe
-final class MonotonicTTLTimeProvider implements TtlTimeProvider, Serializable {
+final class MonotonicTTLTimeProvider extends TtlTimeProvider implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
@@ -67,7 +68,7 @@ final class MonotonicTTLTimeProvider implements TtlTimeProvider, Serializable {
 
 	@Override
 	@GuardedBy("lock")
-	public long currentTimestamp() {
+	public long currentTimestamp(StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 		synchronized (lock) {
 			if (timeIsFrozen && lastReturnedProcessingTime != Long.MIN_VALUE) {
 				return lastReturnedProcessingTime;

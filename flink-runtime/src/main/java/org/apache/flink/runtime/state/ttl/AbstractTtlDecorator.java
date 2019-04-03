@@ -46,6 +46,8 @@ abstract class AbstractTtlDecorator<T> {
 	/** State value time to live in milliseconds. */
 	final long ttl;
 
+	final StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic;
+
 	AbstractTtlDecorator(
 		T original,
 		StateTtlConfig config,
@@ -59,6 +61,7 @@ abstract class AbstractTtlDecorator<T> {
 		this.updateTsOnRead = config.getUpdateType() == StateTtlConfig.UpdateType.OnReadAndWrite;
 		this.returnExpired = config.getStateVisibility() == StateTtlConfig.StateVisibility.ReturnExpiredIfNotCleanedUp;
 		this.ttl = config.getTtl().toMilliseconds();
+		this.ttlTimeCharacteristic = config.getTtlTimeCharacteristic();
 	}
 
 	<V> V getUnexpired(TtlValue<V> ttlValue) {
@@ -66,11 +69,11 @@ abstract class AbstractTtlDecorator<T> {
 	}
 
 	<V> boolean expired(TtlValue<V> ttlValue) {
-		return TtlUtils.expired(ttlValue, ttl, timeProvider);
+		return TtlUtils.expired(ttlValue, ttl, timeProvider, ttlTimeCharacteristic);
 	}
 
 	<V> TtlValue<V> wrapWithTs(V value) {
-		return TtlUtils.wrapWithTs(value, timeProvider.currentTimestamp());
+		return TtlUtils.wrapWithTs(value, timeProvider.currentTimestamp(ttlTimeCharacteristic));
 	}
 
 	<V> TtlValue<V> rewrapWithNewTs(TtlValue<V> ttlValue) {

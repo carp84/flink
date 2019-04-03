@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.state.internal.InternalKvState;
 import org.apache.flink.util.FlinkRuntimeException;
@@ -43,11 +44,13 @@ abstract class AbstractTtlState<K, N, SV, TTLSV, S extends InternalKvState<K, N,
 
 	/** This registered callback is to be called whenever state is accessed for read or write. */
 	final Runnable accessCallback;
+	final TtlTimeCharacteristic ttlTimeCharacteristic;
 
 	AbstractTtlState(TtlStateContext<S, SV> ttlStateContext) {
 		super(ttlStateContext.original, ttlStateContext.config, ttlStateContext.timeProvider);
 		this.valueSerializer = ttlStateContext.valueSerializer;
 		this.accessCallback = ttlStateContext.accessCallback;
+		this.ttlTimeCharacteristic = ttlStateContext.config.getTtlTimeCharacteristic();
 	}
 
 	<SE extends Throwable, CE extends Throwable, T> T getWithTtlCheckAndUpdate(

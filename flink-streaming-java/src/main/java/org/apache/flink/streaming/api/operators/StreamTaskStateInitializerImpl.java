@@ -19,7 +19,6 @@
 package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.api.common.TaskInfo;
-import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.CloseableRegistry;
@@ -44,8 +43,6 @@ import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.TaskStateManager;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.runtime.util.OperatorSubtaskDescriptionText;
-import org.apache.flink.streaming.api.TimeCharacteristic;
-import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.CloseableIterable;
 import org.apache.flink.util.Preconditions;
@@ -91,8 +88,6 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 	/** This object is the factory for everything related to state backends and checkpointing. */
 	private final StateBackend stateBackend;
 
-	private final TtlTimeProvider ttlTimeProvider;
-
 	public StreamTaskStateInitializerImpl(
 		Environment environment,
 		StateBackend stateBackend,
@@ -102,20 +97,6 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 		this.taskStateManager = Preconditions.checkNotNull(environment.getTaskStateManager());
 		this.stateBackend = Preconditions.checkNotNull(stateBackend);
 		this.processingTimeService = processingTimeService;
-		this.ttlTimeProvider = getTtlTimeProvider(new StreamConfig(environment.getTaskConfiguration()).getTimeCharacteristic());
-	}
-
-	private TtlTimeProvider getTtlTimeProvider(TimeCharacteristic timeCharacteristic) {
-		switch (timeCharacteristic) {
-			case ProcessingTime:
-				return new TtlTimeProvider(TtlTimeCharacteristic.ProcessingTime);
-			case IngestionTime:
-				return new TtlTimeProvider(TtlTimeCharacteristic.IngestionTime);
-			case EventTime:
-				return new TtlTimeProvider(TtlTimeCharacteristic.EventTime);
-			default:
-				throw new IllegalArgumentException("Unknown time characteristic: " + timeCharacteristic);
-		}
 	}
 
 	// -----------------------------------------------------------------------------------------------------------------
@@ -315,7 +296,7 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 					taskInfo.getMaxNumberOfParallelSubtasks(),
 					keyGroupRange,
 					environment.getTaskKvStateRegistry(),
-					ttlTimeProvider,
+					TtlTimeProvider.DEFAULT,
 					metricGroup,
 					stateHandles,
 					cancelStreamRegistryForRestore),

@@ -18,20 +18,30 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
+
 import javax.annotation.Nullable;
 
 /** Common functions related to State TTL. */
 public class TtlUtils {
-	static <V> boolean expired(@Nullable TtlValue<V> ttlValue, long ttl, TtlTimeProvider timeProvider) {
-		return expired(ttlValue, ttl, timeProvider.currentTimestamp());
+	static <V> boolean expired(
+		@Nullable TtlValue<V> ttlValue,
+		long ttl,
+		TtlTimeProvider timeProvider,
+		TtlTimeCharacteristic ttlTimeCharacteristic) {
+		return expired(ttlValue, ttl, timeProvider.currentTimestamp(ttlTimeCharacteristic));
 	}
 
 	static <V> boolean expired(@Nullable TtlValue<V> ttlValue, long ttl, long currentTimestamp) {
 		return ttlValue != null && expired(ttlValue.getLastAccessTimestamp(), ttl, currentTimestamp);
 	}
 
-	static boolean expired(long ts, long ttl, TtlTimeProvider timeProvider) {
-		return expired(ts, ttl, timeProvider.currentTimestamp());
+	static boolean expired(
+		long ts,
+		long ttl,
+		TtlTimeProvider timeProvider,
+		TtlTimeCharacteristic ttlTimeCharacteristic) {
+		return expired(ts, ttl, timeProvider.currentTimestamp(ttlTimeCharacteristic));
 	}
 
 	public static boolean expired(long ts, long ttl, long currentTimestamp) {

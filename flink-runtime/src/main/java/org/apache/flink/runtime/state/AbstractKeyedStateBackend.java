@@ -22,7 +22,6 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.state.State;
 import org.apache.flink.api.common.state.StateDescriptor;
-import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
@@ -59,8 +58,8 @@ public abstract class AbstractKeyedStateBackend<K> implements
 	/** The currently active key. */
 	private K currentKey;
 
-	/** The current timestamp, if the time characteristic is set to EventTime or IngestionTime. */
-	private long currentTimestamp;
+	/** The system current timestamp, if the job time characteristic is set to EventTime or IngestionTime. */
+	private long currentSystemTimestamp;
 
 	/** Listeners to changes of keyed context ({@link #currentKey}). */
 	private final ArrayList<KeySelectionListener<K>> keySelectionListeners;
@@ -373,15 +372,11 @@ public abstract class AbstractKeyedStateBackend<K> implements
 		return false;
 	}
 
-	public void setCurrentTimeStamp(TtlTimeCharacteristic timeCharacteristic, long timestamp) {
-		if (timeCharacteristic != ttlTimeProvider.getTtlTimeCharacteristic()) {
-			throw new IllegalStateException("Trying to set time stamp according to " + timeCharacteristic
-				+ " while the ttlTimeProvider is set to " + ttlTimeProvider.getTtlTimeCharacteristic());
-		}
-		this.currentTimestamp = timestamp;
+	public void setCurrentSystemTimeStamp(long currentSystemTimestamp) {
+		this.currentSystemTimestamp = currentSystemTimestamp;
 	}
 
-	public long getCurrentTimestamp() {
-		return this.currentTimestamp;
+	public long getCurrentSystemTimestamp() {
+		return this.currentSystemTimestamp;
 	}
 }

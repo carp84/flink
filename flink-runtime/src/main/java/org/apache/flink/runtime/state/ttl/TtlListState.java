@@ -79,7 +79,7 @@ class TtlListState<K, N, T> extends
 
 	private void updateTs(List<TtlValue<T>> ttlValues) throws Exception {
 		List<TtlValue<T>> unexpiredWithUpdatedTs = new ArrayList<>(ttlValues.size());
-		long currentTimestamp = timeProvider.currentTimestamp();
+		long currentTimestamp = timeProvider.currentTimestamp(ttlTimeCharacteristic);
 		for (TtlValue<T> ttlValue : ttlValues) {
 			if (!TtlUtils.expired(ttlValue, ttl, currentTimestamp)) {
 				unexpiredWithUpdatedTs.add(TtlUtils.wrapWithTs(ttlValue.getUserValue(), currentTimestamp));
@@ -100,7 +100,7 @@ class TtlListState<K, N, T> extends
 	@Nullable
 	@Override
 	public List<TtlValue<T>> getUnexpiredOrNull(@Nonnull List<TtlValue<T>> ttlValues) {
-		long currentTimestamp = timeProvider.currentTimestamp();
+		long currentTimestamp = timeProvider.currentTimestamp(ttlTimeCharacteristic);
 		List<TtlValue<T>> unexpired = new ArrayList<>(ttlValues.size());
 		TypeSerializer<TtlValue<T>> elementSerializer =
 			((ListSerializer<TtlValue<T>>) original.getValueSerializer()).getElementSerializer();
@@ -151,7 +151,7 @@ class TtlListState<K, N, T> extends
 	}
 
 	private List<TtlValue<T>> withTs(List<T> values) {
-		long currentTimestamp = timeProvider.currentTimestamp();
+		long currentTimestamp = timeProvider.currentTimestamp(ttlTimeCharacteristic);
 		List<TtlValue<T>> withTs = new ArrayList<>(values.size());
 		for (T value : values) {
 			Preconditions.checkNotNull(value, "You cannot have null element in a ListState.");

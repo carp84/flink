@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshotMigrationTestBase;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
@@ -52,7 +53,7 @@ public class TtlSerializerStateMigrationTest extends TypeSerializerSnapshotMigra
 			SPEC_NAME,
 			TtlSerializer.class,
 			TtlSerializerSnapshot.class,
-			() -> new TtlSerializer<>(LongSerializer.INSTANCE, StringSerializer.INSTANCE));
+			() -> new TtlSerializer<>(LongSerializer.INSTANCE, StringSerializer.INSTANCE, StateTtlConfig.TtlTimeCharacteristic.ProcessingTime));
 
 		return testSpecifications.get();
 	}

@@ -24,12 +24,12 @@ import org.apache.flink.api.common.state.StateTtlConfig;
 public class MockTtlTimeProvider extends TtlTimeProvider {
 	public long time = 0;
 
-	public MockTtlTimeProvider(StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
-		super(ttlTimeCharacteristic);
+	public MockTtlTimeProvider() {
+		super();
 	}
 
 	@Override
-	public long currentTimestamp() {
+	public long currentTimestamp(StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 		return time;
 	}
 }

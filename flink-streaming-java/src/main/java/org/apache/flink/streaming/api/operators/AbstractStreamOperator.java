@@ -24,7 +24,6 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.state.KeyedStateStore;
 import org.apache.flink.api.common.state.State;
 import org.apache.flink.api.common.state.StateDescriptor;
-import org.apache.flink.api.common.state.StateTtlConfig.TtlTimeCharacteristic;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
@@ -55,7 +54,6 @@ import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.StateSnapshotContextSynchronousImpl;
 import org.apache.flink.runtime.state.VoidNamespace;
 import org.apache.flink.runtime.state.VoidNamespaceSerializer;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
@@ -619,32 +617,13 @@ public abstract class AbstractStreamOperator<OUT>
 			Object key = selector.getKey(record.getValue());
 			setCurrentKey(key);
 		}
-		setCurrentTimeStamp(record);
+		setCurrentSystemTimeStamp(record);
 	}
 
-	private <T> void setCurrentTimeStamp(StreamRecord<T> record) {
-		TimeCharacteristic timeCharacteristic = this.config.getTimeCharacteristic();
-		switch (timeCharacteristic) {
-			case EventTime:
-				checkAndSetStateTimeStamp(TtlTimeCharacteristic.EventTime, record);
-				break;
-			case IngestionTime:
-				checkAndSetStateTimeStamp(TtlTimeCharacteristic.IngestionTime, record);
-				break;
-			case ProcessingTime:
-			default:
-				break;
-		}
-	}
-
-	private <T> void checkAndSetStateTimeStamp(TtlTimeCharacteristic timeCharacteristic, StreamRecord<T> record) {
+	private <T> void setCurrentSystemTimeStamp(StreamRecord<T> record) {
 		if (keyedStateBackend != null) {
 			Preconditions.checkArgument(record.hasTimestamp());
-			try {
-				keyedStateBackend.setCurrentTimeStamp(timeCharacteristic, record.getTimestamp());
-			} catch (Exception e) {
-				throw new RuntimeException("Exception occurred while setting the current timestamp.", e);
-			}
+			keyedStateBackend.setCurrentSystemTimeStamp(record.getTimestamp());
 		}
 	}
 

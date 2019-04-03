@@ -72,16 +72,23 @@ public class RocksDbTtlCompactFiltersManager {
 
 		if (enableTtlCompactionFilter && metaInfoBase instanceof RegisteredKeyValueStateBackendMetaInfo) {
 			RegisteredKeyValueStateBackendMetaInfo kvMetaInfoBase = (RegisteredKeyValueStateBackendMetaInfo) metaInfoBase;
-			if (TtlStateFactory.TtlSerializer.isTtlStateSerializer(kvMetaInfoBase.getStateSerializer())) {
-				createAndSetCompactFilterFactory(metaInfoBase.getName(), options);
+			@SuppressWarnings("unchecked")
+			TtlStateFactory.TtlSerializer<?> serializer = TtlStateFactory.TtlSerializer.getTtlStateSerializer(kvMetaInfoBase.getStateSerializer());
+			if (serializer != null) {
+				createAndSetCompactFilterFactory(metaInfoBase.getName(), options, serializer.getTtlTimeCharacteristic());
 			}
 		}
 	}
 
-	private void createAndSetCompactFilterFactory(String stateName, @Nonnull ColumnFamilyOptions options) {
+	private void createAndSetCompactFilterFactory(
+		String stateName,
+		@Nonnull ColumnFamilyOptions options,
+		StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 
 		FlinkCompactionFilterFactory compactionFilterFactory =
-			new FlinkCompactionFilterFactory(new TimeProviderWrapper(ttlTimeProvider), createRocksDbNativeLogger());
+			new FlinkCompactionFilterFactory(
+				new TimeProviderWrapper(ttlTimeProvider, ttlTimeCharacteristic),
+				createRocksDbNativeLogger());
 		//noinspection resource
 		options.setCompactionFilterFactory(compactionFilterFactory);
 		compactionFilterFactories.put(stateName, compactionFilterFactory);
@@ -160,14 +167,18 @@ public class RocksDbTtlCompactFiltersManager {
 
 	private static class TimeProviderWrapper implements FlinkCompactionFilter.TimeProvider {
 		private final TtlTimeProvider ttlTimeProvider;
+		private final StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic;
 
-		private TimeProviderWrapper(TtlTimeProvider ttlTimeProvider) {
+		private TimeProviderWrapper(
+			TtlTimeProvider ttlTimeProvider,
+			StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 			this.ttlTimeProvider = ttlTimeProvider;
+			this.ttlTimeCharacteristic = ttlTimeCharacteristic;
 		}
 
 		@Override
 		public long currentTimestamp() {
-			return ttlTimeProvider.currentTimestamp();
+			return ttlTimeProvider.currentTimestamp(ttlTimeCharacteristic);
 		}
 	}
 

@@ -47,7 +47,6 @@ import org.apache.flink.util.function.SupplierWithException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -87,6 +86,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 	private final long ttl;
 	@Nullable
 	private final TtlIncrementalCleanup<K, N, TTLSV> incrementalCleanup;
+	private final StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic;
 
 	private TtlStateFactory(
 		@Nonnull TypeSerializer<N> namespaceSerializer,
@@ -101,6 +101,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 		this.ttl = ttlConfig.getTtl().toMilliseconds();
 		this.stateFactories = createStateFactories();
 		this.incrementalCleanup = getTtlIncrementalCleanup();
+		this.ttlTimeCharacteristic = ttlConfig.getTtlTimeCharacteristic();
 	}
 
 	@SuppressWarnings("deprecation")
@@ -133,7 +134,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 	@SuppressWarnings("unchecked")
 	private IS createValueState() throws Exception {
 		ValueStateDescriptor<TtlValue<SV>> ttlDescriptor = new ValueStateDescriptor<>(
-			stateDesc.getName(), new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer()));
+			stateDesc.getName(), new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlValueState<>(createTtlStateContext(ttlDescriptor));
 	}
 
@@ -141,7 +142,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 	private <T> IS createListState() throws Exception {
 		ListStateDescriptor<T> listStateDesc = (ListStateDescriptor<T>) stateDesc;
 		ListStateDescriptor<TtlValue<T>> ttlDescriptor = new ListStateDescriptor<>(
-			stateDesc.getName(), new TtlSerializer<>(LongSerializer.INSTANCE, listStateDesc.getElementSerializer()));
+			stateDesc.getName(), new TtlSerializer<>(LongSerializer.INSTANCE, listStateDesc.getElementSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlListState<>(createTtlStateContext(ttlDescriptor));
 	}
 
@@ -151,7 +152,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 		MapStateDescriptor<UK, TtlValue<UV>> ttlDescriptor = new MapStateDescriptor<>(
 			stateDesc.getName(),
 			mapStateDesc.getKeySerializer(),
-			new TtlSerializer<>(LongSerializer.INSTANCE, mapStateDesc.getValueSerializer()));
+			new TtlSerializer<>(LongSerializer.INSTANCE, mapStateDesc.getValueSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlMapState<>(createTtlStateContext(ttlDescriptor));
 	}
 
@@ -161,7 +162,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 		ReducingStateDescriptor<TtlValue<SV>> ttlDescriptor = new ReducingStateDescriptor<>(
 			stateDesc.getName(),
 			new TtlReduceFunction<>(reducingStateDesc.getReduceFunction(), ttlConfig, timeProvider),
-			new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer()));
+			new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlReducingState<>(createTtlStateContext(ttlDescriptor));
 	}
 
@@ -172,7 +173,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 		TtlAggregateFunction<IN, SV, OUT> ttlAggregateFunction = new TtlAggregateFunction<>(
 			aggregatingStateDescriptor.getAggregateFunction(), ttlConfig, timeProvider);
 		AggregatingStateDescriptor<IN, TtlValue<SV>, OUT> ttlDescriptor = new AggregatingStateDescriptor<>(
-			stateDesc.getName(), ttlAggregateFunction, new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer()));
+			stateDesc.getName(), ttlAggregateFunction, new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlAggregatingState<>(createTtlStateContext(ttlDescriptor), ttlAggregateFunction);
 	}
 
@@ -185,7 +186,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 			stateDesc.getName(),
 			ttlInitAcc,
 			new TtlFoldFunction<>(foldingStateDescriptor.getFoldFunction(), ttlConfig, timeProvider, initAcc),
-			new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer()));
+			new TtlSerializer<>(LongSerializer.INSTANCE, stateDesc.getSerializer(), ttlTimeCharacteristic));
 		return (IS) new TtlFoldingState<>(createTtlStateContext(ttlDescriptor));
 	}
 
@@ -234,7 +235,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 		if (!ttlConfig.getCleanupStrategies().inFullSnapshot()) {
 			return StateSnapshotTransformFactory.noTransform();
 		} else {
-			return new TtlStateSnapshotTransformer.Factory<>(timeProvider, ttl);
+			return new TtlStateSnapshotTransformer.Factory<>(timeProvider, ttl, ttlTimeCharacteristic);
 		}
 	}
 
@@ -244,15 +245,28 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 	public static class TtlSerializer<T> extends CompositeSerializer<TtlValue<T>>
 			implements TypeSerializerConfigSnapshot.SelfResolvingTypeSerializer<TtlValue<T>> {
 		private static final long serialVersionUID = 131020282727167064L;
+		private final StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic;
 
 		@SuppressWarnings("WeakerAccess")
-		public TtlSerializer(TypeSerializer<Long> timestampSerializer, TypeSerializer<T> userValueSerializer) {
+		public TtlSerializer(
+			TypeSerializer<Long> timestampSerializer,
+			TypeSerializer<T> userValueSerializer,
+			StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 			super(true, timestampSerializer, userValueSerializer);
+			this.ttlTimeCharacteristic = ttlTimeCharacteristic;
 		}
 
 		@SuppressWarnings("WeakerAccess")
-		public TtlSerializer(PrecomputedParameters precomputed, TypeSerializer<?> ... fieldSerializers) {
+		public TtlSerializer(
+			PrecomputedParameters precomputed,
+			StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic,
+			TypeSerializer<?>... fieldSerializers) {
 			super(precomputed, fieldSerializers);
+			this.ttlTimeCharacteristic = ttlTimeCharacteristic;
+		}
+
+		public StateTtlConfig.TtlTimeCharacteristic getTtlTimeCharacteristic() {
+			return ttlTimeCharacteristic;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -279,7 +293,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 			TypeSerializer<?> ... originalSerializers) {
 			Preconditions.checkNotNull(originalSerializers);
 			Preconditions.checkArgument(originalSerializers.length == 2);
-			return new TtlSerializer<>(precomputed, originalSerializers);
+			return new TtlSerializer<>(precomputed, ttlTimeCharacteristic, originalSerializers);
 		}
 
 		@SuppressWarnings("unchecked")
@@ -303,7 +317,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 
 			if (deprecatedConfigSnapshot instanceof ConfigSnapshot) {
 				ConfigSnapshot castedLegacyConfigSnapshot = (ConfigSnapshot) deprecatedConfigSnapshot;
-				TtlSerializerSnapshot<T> newSnapshot = new TtlSerializerSnapshot<>();
+				TtlSerializerSnapshot<T> newSnapshot = new TtlSerializerSnapshot<>(ttlTimeCharacteristic);
 
 				return CompositeTypeSerializerUtil.delegateCompatibilityCheckToNewSnapshot(
 					this,
@@ -314,13 +328,23 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 			return TypeSerializerSchemaCompatibility.incompatible();
 		}
 
-		public static boolean isTtlStateSerializer(TypeSerializer<?> typeSerializer) {
-			boolean ttlSerializer = typeSerializer instanceof TtlStateFactory.TtlSerializer;
-			boolean ttlListSerializer = typeSerializer instanceof ListSerializer &&
-				((ListSerializer) typeSerializer).getElementSerializer() instanceof TtlStateFactory.TtlSerializer;
-			boolean ttlMapSerializer = typeSerializer instanceof MapSerializer &&
-				((MapSerializer) typeSerializer).getValueSerializer() instanceof TtlStateFactory.TtlSerializer;
-			return ttlSerializer || ttlListSerializer || ttlMapSerializer;
+		@Nullable
+		public static <T> TtlStateFactory.TtlSerializer<T> getTtlStateSerializer(TypeSerializer<T> typeSerializer) {
+			if (typeSerializer instanceof TtlStateFactory.TtlSerializer) {
+				return (TtlSerializer<T>) typeSerializer;
+			}
+			TypeSerializer<T> elementSerializer = null;
+			if (typeSerializer instanceof ListSerializer) {
+				elementSerializer = ((ListSerializer<T>) typeSerializer).getElementSerializer();
+			}
+			if (typeSerializer instanceof MapSerializer) {
+				elementSerializer = ((MapSerializer<?, T>) typeSerializer).getValueSerializer();
+			}
+			if (elementSerializer instanceof TtlStateFactory.TtlSerializer) {
+				return (TtlSerializer<T>) elementSerializer;
+			} else {
+				return null;
+			}
 		}
 	}
 
@@ -330,14 +354,23 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 	public static final class TtlSerializerSnapshot<T> extends CompositeTypeSerializerSnapshot<TtlValue<T>, TtlSerializer<T>> {
 
 		private static final int VERSION = 2;
+		// FIXME check the compatibility here.
+		private final StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic;
 
 		@SuppressWarnings({"WeakerAccess", "unused"})
 		public TtlSerializerSnapshot() {
+			this(StateTtlConfig.TtlTimeCharacteristic.ProcessingTime);
+		}
+
+		@SuppressWarnings({"WeakerAccess", "unused"})
+		public TtlSerializerSnapshot(StateTtlConfig.TtlTimeCharacteristic ttlTimeCharacteristic) {
 			super(TtlSerializer.class);
+			this.ttlTimeCharacteristic = ttlTimeCharacteristic;
 		}
 
 		TtlSerializerSnapshot(TtlSerializer<T> serializerInstance) {
 			super(serializerInstance);
+			this.ttlTimeCharacteristic = serializerInstance.getTtlTimeCharacteristic();
 		}
 
 		@Override
@@ -356,7 +389,7 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
 			TypeSerializer<Long> timestampSerializer = (TypeSerializer<Long>) nestedSerializers[0];
 			TypeSerializer<T> valueSerializer = (TypeSerializer<T>) nestedSerializers[1];
 
-			return new TtlSerializer<>(timestampSerializer, valueSerializer);
+			return new TtlSerializer<>(timestampSerializer, valueSerializer, ttlTimeCharacteristic);
 		}
 	}
 }

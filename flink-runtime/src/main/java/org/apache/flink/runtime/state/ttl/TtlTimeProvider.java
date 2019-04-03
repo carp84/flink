@@ -28,24 +28,19 @@ import javax.annotation.Nonnull;
  * Provides time to TTL logic to judge about state expiration.
  */
 public class TtlTimeProvider {
-	public static final TtlTimeProvider DEFAULT = new TtlTimeProvider(TtlTimeCharacteristic.ProcessingTime);
+	public static final TtlTimeProvider DEFAULT = new TtlTimeProvider();
 
-	private final TtlTimeCharacteristic ttlTimeCharacteristic;
 	private AbstractKeyedStateBackend keyedStateBackend;
 
-	public TtlTimeProvider(TtlTimeCharacteristic ttlTimeCharacteristic) {
-		this.ttlTimeCharacteristic = ttlTimeCharacteristic;
-	}
-
-	public long currentTimestamp() {
+	public long currentTimestamp(TtlTimeCharacteristic ttlTimeCharacteristic) {
 		switch (ttlTimeCharacteristic) {
 			case ProcessingTime:
 				return System.currentTimeMillis();
 			case IngestionTime:
 			case EventTime:
 				Preconditions.checkNotNull(this.keyedStateBackend,
-					"Cannot get timestamp before keyed backend is set");
-				return keyedStateBackend.getCurrentTimestamp();
+					"Cannot get EventTime/IngestionTime timestamp before keyed backend is set");
+				return keyedStateBackend.getCurrentSystemTimestamp();
 			default:
 				throw new IllegalStateException("Unknown ttl time characteristic: " + ttlTimeCharacteristic);
 		}
@@ -53,9 +48,5 @@ public class TtlTimeProvider {
 
 	public void setKeyedStateBackend(@Nonnull AbstractKeyedStateBackend keyedStateBackend) {
 		this.keyedStateBackend = keyedStateBackend;
-	}
-
-	public TtlTimeCharacteristic getTtlTimeCharacteristic() {
-		return this.ttlTimeCharacteristic;
 	}
 }
