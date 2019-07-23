@@ -105,7 +105,7 @@ public abstract class AbstractRecoverableWriterTest extends TestLogger {
 
 	@Test
 	public void testCommitAfterNormalClose() throws Exception {
-		int repetitions = 10;
+		int repetitions = 100;
 		for(int i = 0; i < repetitions; i++) {
 			System.out.println("Round-" + i);
 			cleanup();
