@@ -105,19 +105,22 @@ public abstract class AbstractRecoverableWriterTest extends TestLogger {
 
 	@Test
 	public void testCommitAfterNormalClose() throws Exception {
-		final RecoverableWriter writer = getNewFileSystemWriter();
+		int repetitions = 10;
+		for(int i = 0; i < repetitions; i++) {
+			final RecoverableWriter writer = getNewFileSystemWriter();
 
-		final Path testDir = getBasePathForTest();
+			final Path testDir = getBasePathForTest();
 
-		final Path path = new Path(testDir, "part-0");
+			final Path path = new Path(testDir, "part-0");
 
-		try (final RecoverableFsDataOutputStream stream = writer.open(path)) {
-			stream.write(testData1.getBytes(StandardCharsets.UTF_8));
-			stream.closeForCommit().commit();
+			try (final RecoverableFsDataOutputStream stream = writer.open(path)) {
+				stream.write(testData1.getBytes(StandardCharsets.UTF_8));
+				stream.closeForCommit().commit();
 
-			for (Map.Entry<Path, String> fileContents : getFileContentByPath(testDir).entrySet()) {
-				Assert.assertEquals("part-0", fileContents.getKey().getName());
-				Assert.assertEquals(testData1, fileContents.getValue());
+				for (Map.Entry<Path, String> fileContents : getFileContentByPath(testDir).entrySet()) {
+					Assert.assertEquals("part-0", fileContents.getKey().getName());
+					Assert.assertEquals(testData1, fileContents.getValue());
+				}
 			}
 		}
 	}

@@ -91,41 +91,41 @@ EXIT_CODE=0
 # Run actual compile&test steps
 if [ $STAGE == "$STAGE_COMPILE" ]; then
     # We use -Punsafe-mapr-repo since the https version fails on Travis for some reason.
-	MVN="mvn clean install -nsu -Punsafe-mapr-repo -Dflink.convergence.phase=install -Pcheck-convergence -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dmaven.javadoc.skip=true -B -DskipTests $PROFILE"
+	MVN="mvn clean install -nsu -Punsafe-mapr-repo -Dflink.convergence.phase=install -Pcheck-convergence -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dmaven.javadoc.skip=true -B -DskipTests $PROFILE -Dcheckstyle.skip=true -pl flink-hadoop-fs -am"
 	$MVN
 	EXIT_CODE=$?
 
-    if [ $EXIT_CODE == 0 ]; then
-        printf "\n\n==============================================================================\n"
-        printf "Checking scala suffixes\n"
-        printf "==============================================================================\n"
+#    if [ $EXIT_CODE == 0 ]; then
+#        printf "\n\n==============================================================================\n"
+#        printf "Checking scala suffixes\n"
+#        printf "==============================================================================\n"
+#
+#        ./tools/verify_scala_suffixes.sh "${PROFILE}"
+#        EXIT_CODE=$?
+#    else
+#        printf "\n==============================================================================\n"
+#        printf "Previous build failure detected, skipping scala-suffixes check.\n"
+#        printf "==============================================================================\n"
+#    fi
 
-        ./tools/verify_scala_suffixes.sh "${PROFILE}"
-        EXIT_CODE=$?
-    else
-        printf "\n==============================================================================\n"
-        printf "Previous build failure detected, skipping scala-suffixes check.\n"
-        printf "==============================================================================\n"
-    fi
-    
-    if [ $EXIT_CODE == 0 ]; then
-        check_shaded_artifacts
-        EXIT_CODE=$(($EXIT_CODE+$?))
-        check_shaded_artifacts_s3_fs hadoop
-        EXIT_CODE=$(($EXIT_CODE+$?))
-        check_shaded_artifacts_s3_fs presto
-        EXIT_CODE=$(($EXIT_CODE+$?))
-        check_shaded_artifacts_connector_elasticsearch ""
-        EXIT_CODE=$(($EXIT_CODE+$?))
-        check_shaded_artifacts_connector_elasticsearch 2
-        EXIT_CODE=$(($EXIT_CODE+$?))
-        check_shaded_artifacts_connector_elasticsearch 5
-        EXIT_CODE=$(($EXIT_CODE+$?))
-    else
-        echo "=============================================================================="
-        echo "Previous build failure detected, skipping shaded dependency check."
-        echo "=============================================================================="
-    fi
+#    if [ $EXIT_CODE == 0 ]; then
+#        check_shaded_artifacts
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#        check_shaded_artifacts_s3_fs hadoop
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#        check_shaded_artifacts_s3_fs presto
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#        check_shaded_artifacts_connector_elasticsearch ""
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#        check_shaded_artifacts_connector_elasticsearch 2
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#        check_shaded_artifacts_connector_elasticsearch 5
+#        EXIT_CODE=$(($EXIT_CODE+$?))
+#    else
+#        echo "=============================================================================="
+#        echo "Previous build failure detected, skipping shaded dependency check."
+#        echo "=============================================================================="
+#    fi
 
     if [ $EXIT_CODE == 0 ]; then
         echo "Creating cache build directory $CACHE_FLINK_DIR"
