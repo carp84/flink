@@ -62,7 +62,7 @@ MVN_TEST_MODULES=$(get_test_modules_for_stage ${TEST})
 #
 # We use -Punsafe-mapr-repo since the https version fails on Travis for some reason.
 MVN_LOGGING_OPTIONS="-Dlog.dir=${ARTIFACTS_DIR} -Dlog4j.configuration=file://$LOG4J_PROPERTIES -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-MVN_COMMON_OPTIONS="-nsu -Dflink.forkCount=1 -Dflink.forkCountTestPackage=1 -Dfast -B -Pskip-webui-build -Punsafe-mapr-repo $MVN_LOGGING_OPTIONS"
+MVN_COMMON_OPTIONS="-nsu -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dfast -B -Pskip-webui-build -Punsafe-mapr-repo $MVN_LOGGING_OPTIONS"
 MVN_COMPILE_OPTIONS="-DskipTests"
 MVN_TEST_OPTIONS="$MVN_LOGGING_OPTIONS -Dflink.tests.with-openssl"
 

@@ -105,11 +105,11 @@ public abstract class AbstractRecoverableWriterTest extends TestLogger {
 
 	@Test
 	public void testCommitAfterNormalClose() throws Exception {
-		int repetitions = 100;
+		int repetitions = 1;
 		for(int i = 0; i < repetitions; i++) {
-			System.out.println("Round-" + i);
-			cleanup();
-			prepare();
+//			System.out.println("Round-" + i);
+//			cleanup();
+//			prepare();
 			final RecoverableWriter writer = getNewFileSystemWriter();
 
 			final Path testDir = getBasePathForTest();
