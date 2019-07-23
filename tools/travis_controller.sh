@@ -91,7 +91,7 @@ EXIT_CODE=0
 # Run actual compile&test steps
 if [ $STAGE == "$STAGE_COMPILE" ]; then
     # We use -Punsafe-mapr-repo since the https version fails on Travis for some reason.
-	MVN="mvn clean install -nsu -Punsafe-mapr-repo -Dflink.convergence.phase=install -Pcheck-convergence -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dmaven.javadoc.skip=true -B -DskipTests $PROFILE -Dcheckstyle.skip=true -pl flink-filesystems -am"
+	MVN="mvn clean install -nsu -Punsafe-mapr-repo -Dflink.convergence.phase=install -Pcheck-convergence -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dmaven.javadoc.skip=true -B -DskipTests $PROFILE -Dcheckstyle.skip=true -pl org.apache.flink:flink-hadoop-fs -am"
 	$MVN
 	EXIT_CODE=$?
 
