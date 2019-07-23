@@ -67,7 +67,7 @@ MVN_COMPILE_OPTIONS="-DskipTests"
 MVN_TEST_OPTIONS="$MVN_LOGGING_OPTIONS -Dflink.tests.with-openssl"
 
 MVN_COMPILE="mvn $MVN_COMMON_OPTIONS $MVN_COMPILE_OPTIONS $PROFILE -Dcheckstyle.skip=true -pl org.apache.flink:flink-hadoop-fs -am install"
-MVN_TEST="mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE -pl org.apache.flink:flink-hadoop-fs -Dtest=HadoopRecoverableWriterTest -DfailIfNoTests=false -Dcheckstyle.skip=true test"
+MVN_TEST="mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE -pl org.apache.flink:flink-hadoop-fs -Dcheckstyle.skip=true test"
 
 MVN_PID="${ARTIFACTS_DIR}/watchdog.mvn.pid"
 MVN_EXIT="${ARTIFACTS_DIR}/watchdog.mvn.exit"
