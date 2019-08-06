@@ -65,8 +65,8 @@ MVN_COMMON_OPTIONS="-nsu -Dflink.forkCount=2 -Dflink.forkCountTestPackage=2 -Dfa
 MVN_COMPILE_OPTIONS="-DskipTests"
 MVN_TEST_OPTIONS="$MVN_LOGGING_OPTIONS -Dflink.tests.with-openssl"
 
-MVN_COMPILE="mvn $MVN_COMMON_OPTIONS $MVN_COMPILE_OPTIONS $PROFILE $MVN_COMPILE_MODULES install"
-MVN_TEST="mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE $MVN_TEST_MODULES verify"
+MVN_COMPILE="mvn $MVN_COMMON_OPTIONS $MVN_COMPILE_OPTIONS $PROFILE -Dcheckstyle.skip=true -pl org.apache.flink:flink-connector-kafka_2.11 -am install"
+MVN_TEST="mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE -pl org.apache.flink:flink-connector-kafka_2.11 -Dtest=KafkaProducerExactlyOnceITCase -DfailIfNoTests=false -Dcheckstyle.skip=true test"
 
 MVN_PID="${ARTIFACTS_DIR}/watchdog.mvn.pid"
 MVN_EXIT="${ARTIFACTS_DIR}/watchdog.mvn.exit"
@@ -247,9 +247,19 @@ if [ $CMD_TYPE == "MVN" ]; then
 		# Run $MVN_TEST and pipe output to $MVN_OUT for the watchdog. The PID is written to $MVN_PID to
 		# allow the watchdog to kill $MVN if it is not producing any output anymore. $MVN_EXIT contains
 		# the exit code. This is important for Travis' build life-cycle (success/failure).
-		( $MVN_TEST & PID=$! ; echo $PID >&3 ; wait $PID ; echo $? >&4 ) 3>$MVN_PID 4>$MVN_EXIT | tee $MVN_OUT
+                for (( i = 1; ; i++ ))
+                do
+                  echo "Attempt $i"
 
-		EXIT_CODE=$(<$MVN_EXIT)
+		  ( $MVN_TEST & PID=$! ; echo $PID >&3 ; wait $PID ; echo $? >&4 ) 3>$MVN_PID 4>$MVN_EXIT | tee $MVN_OUT
+
+		  EXIT_CODE=$(<$MVN_EXIT)
+                  if [ ${EXIT_CODE} -ne 0 ]
+                  then
+                    echo "Error at attempt $i"
+                    break
+                  fi
+                done
 
 		echo "MVN exited with EXIT CODE: ${EXIT_CODE}."
 
@@ -282,29 +292,29 @@ upload_artifacts_s3
 cd ../../
 
 # only run end-to-end tests in misc because we only have flink-dist here
-if [[ ${PROFILE} == *"jdk9"* ]]; then
-    printf "\n\n==============================================================================\n"
-    printf "Skipping end-to-end tests since they fail on Java 9.\n"
-    printf "==============================================================================\n"
-else
-    case $TEST in
-        (misc)
-            if [ $EXIT_CODE == 0 ]; then
-                printf "\n\n==============================================================================\n"
-                printf "Running end-to-end tests\n"
-                printf "==============================================================================\n"
-    
-                FLINK_DIR=build-target flink-end-to-end-tests/run-pre-commit-tests.sh
-    
-                EXIT_CODE=$?
-            else
-                printf "\n==============================================================================\n"
-                printf "Previous build failure detected, skipping end-to-end tests.\n"
-                printf "==============================================================================\n"
-            fi
-        ;;
-    esac
-fi
+#if [[ ${PROFILE} == *"jdk9"* ]]; then
+#    printf "\n\n==============================================================================\n"
+#    printf "Skipping end-to-end tests since they fail on Java 9.\n"
+#    printf "==============================================================================\n"
+#else
+#    case $TEST in
+#        (misc)
+#            if [ $EXIT_CODE == 0 ]; then
+#                printf "\n\n==============================================================================\n"
+#                printf "Running end-to-end tests\n"
+#                printf "==============================================================================\n"
+#
+#                FLINK_DIR=build-target flink-end-to-end-tests/run-pre-commit-tests.sh
+#
+#                EXIT_CODE=$?
+#            else
+#                printf "\n==============================================================================\n"
+#                printf "Previous build failure detected, skipping end-to-end tests.\n"
+#                printf "==============================================================================\n"
+#            fi
+#        ;;
+#    esac
+#fi
 
 # Exit code for Travis build success/failure
 exit $EXIT_CODE
