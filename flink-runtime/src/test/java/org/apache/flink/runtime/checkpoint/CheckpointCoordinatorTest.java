@@ -128,7 +128,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
 
 	@Before
 	public void setUp() throws Exception {
-		failureManager = new CheckpointFailureManager(0, (throwable,attemptID) -> {});
+		failureManager = new CheckpointFailureManager(0, throwable -> {});
 	}
 
 	@Test
@@ -327,7 +327,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
 
 		final String errorMsg = "Exceeded checkpoint failure tolerance number!";
 
-		CheckpointFailureManager checkpointFailureManager = new CheckpointFailureManager(0, (throwable, attemptID) -> {
+		CheckpointFailureManager checkpointFailureManager = new CheckpointFailureManager(0, throwable -> {
 			throw new RuntimeException(errorMsg);
 		});
 
@@ -3910,7 +3910,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
 
 		// set up the coordinator and validate the initial state
 		final CheckpointCoordinator coordinator = getCheckpointCoordinator(jobId, vertex1, vertex2,
-				new CheckpointFailureManager(0, (throwable, attemptID) -> {
+				new CheckpointFailureManager(0, throwable -> {
 					invocationCounterAndException.f0 += 1;
 					invocationCounterAndException.f1 = throwable;
 				}));

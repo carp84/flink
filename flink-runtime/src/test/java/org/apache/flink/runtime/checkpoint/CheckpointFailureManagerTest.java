@@ -17,7 +17,6 @@
 
 package org.apache.flink.runtime.checkpoint;
 
-import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.util.TestLogger;
 
 import org.junit.Test;
@@ -106,7 +105,7 @@ public class CheckpointFailureManagerTest extends TestLogger {
 		private int invokeCounter = 0;
 
 		@Override
-		public void failJob(final Throwable cause, final ExecutionAttemptID executionAttemptID) {
+		public void failJob(final Throwable cause) {
 			invokeCounter++;
 		}
 
