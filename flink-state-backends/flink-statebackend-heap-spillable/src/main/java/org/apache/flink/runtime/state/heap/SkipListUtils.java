@@ -18,7 +18,12 @@
 
 package org.apache.flink.runtime.state.heap;
 
+import org.apache.flink.runtime.state.heap.space.Allocator;
+import org.apache.flink.runtime.state.heap.space.Chunk;
+import org.apache.flink.runtime.state.heap.space.SpaceUtils;
 import org.apache.flink.util.Preconditions;
+
+import javax.annotation.Nonnull;
 
 import java.nio.ByteBuffer;
 
@@ -376,6 +381,143 @@ public class SkipListUtils {
 	 */
 	public static void putValueData(ByteBuffer byteBuffer, int offset, byte[] value) {
 		ByteBufferUtils.copyFromArrayToBuffer(byteBuffer, offset + getValueMetaLen(), value, 0, value.length);
+	}
+
+	/**
+	 * Return the next of the given node at the given level.
+	 *
+	 * @param node             the node to find the next node for.
+	 * @param level            the level to find the next node.
+	 * @param levelIndexHeader the header of the level index.
+	 * @param spaceAllocator   the space allocator.
+	 * @return the pointer to the next node of the given node at the given level.
+	 */
+	static long helpGetNextNode(
+			long node,
+			int level,
+			LevelIndexHeader levelIndexHeader,
+			Allocator spaceAllocator) {
+		if (node == HEAD_NODE) {
+			return levelIndexHeader.getNextNode(level);
+		}
+
+		Chunk chunk = spaceAllocator.getChunkById(SpaceUtils.getChunkIdByAddress(node));
+		int offsetInChunk = SpaceUtils.getChunkOffsetByAddress(node);
+		ByteBuffer bb = chunk.getByteBuffer(offsetInChunk);
+		int offsetInByteBuffer = chunk.getOffsetInByteBuffer(offsetInChunk);
+
+		return level == 0 ? getNextKeyPointer(bb, offsetInByteBuffer)
+			: getNextIndexNode(bb, offsetInByteBuffer, level);
+	}
+
+	/**
+	 * Whether the node has been logically removed.
+	 *
+	 * @param node           the node to check against
+	 * @param spaceAllocator the space allocator
+	 * @return true if the node has been logically removed.
+	 */
+	static boolean isNodeRemoved(long node, Allocator spaceAllocator) {
+		if (node == NIL_NODE) {
+			return false;
+		}
+
+		Chunk chunk = spaceAllocator.getChunkById(SpaceUtils.getChunkIdByAddress(node));
+		int offsetInChunk = SpaceUtils.getChunkOffsetByAddress(node);
+		ByteBuffer bb = chunk.getByteBuffer(offsetInChunk);
+		int offsetInByteBuffer = chunk.getOffsetInByteBuffer(offsetInChunk);
+		return getNodeStatus(bb, offsetInByteBuffer) == NodeStatus.REMOVE.getValue();
+	}
+
+	/**
+	 * Compare the first skip list key in the given byte buffer with the second skip list key in the given node.
+	 *
+	 * @param keyByteBuffer  byte buffer storing the first key.
+	 * @param keyOffset      offset of the first key in byte buffer.
+	 * @param targetNode     the node storing the second key.
+	 * @param spaceAllocator the space allocator.
+	 * @return Returns a negative integer, zero, or a positive integer as the first key is less than,
+	 * equal to, or greater than the second.
+	 */
+	static int compareByteBufferAndNode(
+			ByteBuffer keyByteBuffer,
+			int keyOffset,
+			long targetNode,
+			@Nonnull Allocator spaceAllocator) {
+		Chunk chunk = spaceAllocator.getChunkById(SpaceUtils.getChunkIdByAddress(targetNode));
+		int offsetInChunk = SpaceUtils.getChunkOffsetByAddress(targetNode);
+		ByteBuffer targetKeyByteBuffer = chunk.getByteBuffer(offsetInChunk);
+		int offsetInByteBuffer = chunk.getOffsetInByteBuffer(offsetInChunk);
+
+		int level = getLevel(targetKeyByteBuffer, offsetInByteBuffer);
+		int targetKeyOffset = offsetInByteBuffer + getKeyDataOffset(level);
+
+		return SkipListKeyComparator.compareTo(keyByteBuffer, keyOffset, targetKeyByteBuffer, targetKeyOffset);
+	}
+
+	/**
+	 * Find the predecessor node for the given node at the given level.
+	 *
+	 * @param node             the node.
+	 * @param level            the level.
+	 * @param levelIndexHeader the head level index.
+	 * @param spaceAllocator   the space allocator.
+	 * @return node id before the key at the given level.
+	 */
+	static long findPredecessor(
+		long node,
+		int level,
+		LevelIndexHeader levelIndexHeader,
+		@Nonnull Allocator spaceAllocator) {
+		Chunk chunk = spaceAllocator.getChunkById(SpaceUtils.getChunkIdByAddress(node));
+		int offsetInChunk = SpaceUtils.getChunkOffsetByAddress(node);
+		ByteBuffer keyByteBuffer = chunk.getByteBuffer(offsetInChunk);
+		int offsetInByteBuffer = chunk.getOffsetInByteBuffer(offsetInChunk);
+
+		int keyLevel = getLevel(keyByteBuffer, offsetInByteBuffer);
+		int keyOffset = offsetInByteBuffer + getKeyDataOffset(keyLevel);
+
+		return findPredecessor(keyByteBuffer, keyOffset, level, levelIndexHeader, spaceAllocator);
+	}
+
+	/**
+	 * Find the predecessor node for the given key at the given level.
+	 * The key is in the byte buffer positioning at the given offset.
+	 *
+	 * @param keyByteBuffer    byte buffer which contains the key.
+	 * @param keyOffset        offset of the key in the byte buffer.
+	 * @param level            the level.
+	 * @param levelIndexHeader the head level index.
+	 * @param spaceAllocator   the space allocator.
+	 * @return node id before the key at the given level.
+	 */
+	static long findPredecessor(
+		ByteBuffer keyByteBuffer,
+		int keyOffset,
+		int level,
+		@Nonnull LevelIndexHeader levelIndexHeader,
+		Allocator spaceAllocator) {
+		int currentLevel = levelIndexHeader.getLevel();
+		long currentNode = HEAD_NODE;
+		long nextNode = levelIndexHeader.getNextNode(currentLevel);
+
+		for ( ; ; ) {
+			if (nextNode != NIL_NODE) {
+				int c = compareByteBufferAndNode(keyByteBuffer, keyOffset, nextNode, spaceAllocator);
+				if (c > 0) {
+					currentNode = nextNode;
+					nextNode = helpGetNextNode(currentNode, currentLevel, levelIndexHeader, spaceAllocator);
+					continue;
+				}
+			}
+
+			if (currentLevel <= level) {
+				return currentNode;
+			}
+
+			currentLevel--;
+			nextNode = helpGetNextNode(currentNode, currentLevel, levelIndexHeader, spaceAllocator);
+		}
 	}
 
 	/**

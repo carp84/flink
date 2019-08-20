@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for {@link CopyOnWriteSkipListStateMap.SkipListKeyComparator}.
+ * Tests for {@link SkipListKeyComparator}.
  */
 public class SkipListKeyComparatorTest {
 
@@ -47,8 +47,8 @@ public class SkipListKeyComparatorTest {
 		TypeSerializer<Long> keySerializer = LongSerializer.INSTANCE;
 		TypeSerializer<Integer> namespaceSerializer = IntSerializer.INSTANCE;
 
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<Long, Integer> skipListKeySerializer =
-			new CopyOnWriteSkipListStateMap.SkipListKeySerializer<>(keySerializer, namespaceSerializer);
+		SkipListKeySerializer<Long, Integer> skipListKeySerializer =
+			new SkipListKeySerializer<>(keySerializer, namespaceSerializer);
 
 		// verify equal namespace and key
 		verifySkipListKey(skipListKeySerializer, 0L, 0, 0L, 0, 0);
@@ -73,8 +73,8 @@ public class SkipListKeyComparatorTest {
 		TypeSerializer<byte[]> keySerializer = ByteArraySerializer.INSTANCE;
 		TypeSerializer<byte[]> namespaceSerializer = ByteArraySerializer.INSTANCE;
 
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<byte[], byte[]> skipListKeySerializer =
-			new CopyOnWriteSkipListStateMap.SkipListKeySerializer<>(keySerializer, namespaceSerializer);
+		SkipListKeySerializer<byte[], byte[]> skipListKeySerializer =
+			new SkipListKeySerializer<>(keySerializer, namespaceSerializer);
 
 		// verify equal namespace and key
 		verifySkipListKeyForByteArray(skipListKeySerializer, "34", "25", "34", "25", 0);
@@ -113,8 +113,8 @@ public class SkipListKeyComparatorTest {
 		TypeSerializer<byte[]> keySerializer = ByteArraySerializer.INSTANCE;
 		TypeSerializer<byte[]> namespaceSerializer = ByteArraySerializer.INSTANCE;
 
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<byte[], byte[]> skipListKeySerializer =
-			new CopyOnWriteSkipListStateMap.SkipListKeySerializer<>(keySerializer, namespaceSerializer);
+		SkipListKeySerializer<byte[], byte[]> skipListKeySerializer =
+			new SkipListKeySerializer<>(keySerializer, namespaceSerializer);
 
 		// test equal namespace
 		verifyNamespaceCompare(skipListKeySerializer, "23", "34", "23", 0);
@@ -135,27 +135,27 @@ public class SkipListKeyComparatorTest {
 	}
 
 	private void verifySkipListKeyForByteArray(
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<byte[], byte[]> keySerializer,
+		SkipListKeySerializer<byte[], byte[]> keySerializer,
 		String key1, String namespace1, String key2, String namespace2, int result) {
 		verifySkipListKey(keySerializer, convertByteString(key1), convertByteString(namespace1),
 			convertByteString(key2), convertByteString(namespace2), result);
 	}
 
 	private <K, N> void verifySkipListKey(
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<K, N> keySerializer,
+		SkipListKeySerializer<K, N> keySerializer,
 		K key1, N namespace1, K key2, N namespace2, int result) {
 		ByteBuffer b1 = ByteBuffer.wrap(keySerializer.serialize(key1, namespace1));
 		ByteBuffer b2 = ByteBuffer.wrap(keySerializer.serialize(key2, namespace2));
-		int actual = CopyOnWriteSkipListStateMap.SkipListKeyComparator.compareTo(b1, 0, b2, 0);
+		int actual = SkipListKeyComparator.compareTo(b1, 0, b2, 0);
 		assertTrue((result == 0 && actual == 0) || (result * actual > 0));
 	}
 
 	private void verifyNamespaceCompare(
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<byte[], byte[]> keySerializer,
+		SkipListKeySerializer<byte[], byte[]> keySerializer,
 		String namespace, String targetKey, String targetNamespace, int result) {
 		byte[] n = keySerializer.serializeNamespace(convertByteString(namespace));
 		byte[] k = keySerializer.serialize(convertByteString(targetKey), convertByteString(targetNamespace));
-		int actual = CopyOnWriteSkipListStateMap.SkipListKeyComparator.compareNamespaceAndNode(
+		int actual = SkipListKeyComparator.compareNamespaceAndNode(
 			ByteBuffer.wrap(n), 0, n.length, ByteBuffer.wrap(k), 0);
 		assertTrue((result == 0 && actual == 0) || (result * actual > 0));
 	}

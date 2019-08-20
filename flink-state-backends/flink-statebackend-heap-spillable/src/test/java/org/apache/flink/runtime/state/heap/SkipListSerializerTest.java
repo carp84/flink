@@ -34,7 +34,7 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Tests for {@link CopyOnWriteSkipListStateMap.SkipListKeySerializer}.
+ * Tests for {@link SkipListKeySerializer}.
  */
 public class SkipListSerializerTest {
 
@@ -43,8 +43,8 @@ public class SkipListSerializerTest {
 		TypeSerializer<String> keySerializer = StringSerializer.INSTANCE;
 		TypeSerializer<String> namespaceSerializer = StringSerializer.INSTANCE;
 
-		CopyOnWriteSkipListStateMap.SkipListKeySerializer<String, String> skipListKeySerializer =
-			new CopyOnWriteSkipListStateMap.SkipListKeySerializer<>(keySerializer, namespaceSerializer);
+		SkipListKeySerializer<String, String> skipListKeySerializer =
+			new SkipListKeySerializer<>(keySerializer, namespaceSerializer);
 
 		for (int i = 0; i < 10; i++) {
 			String key = "key-abcdedg" + i;
@@ -71,8 +71,8 @@ public class SkipListSerializerTest {
 	@Test
 	public void testSkipListValueSerializer() throws IOException {
 		TypeSerializer<String> stateSerializer = StringSerializer.INSTANCE;
-		CopyOnWriteSkipListStateMap.SkipListValueSerializer<String> skipListValueSerializer =
-			new CopyOnWriteSkipListStateMap.SkipListValueSerializer<>(stateSerializer);
+		SkipListValueSerializer<String> skipListValueSerializer =
+			new SkipListValueSerializer<>(stateSerializer);
 
 		for (int i = 0; i < 10; i++) {
 			String state = "value-" + i;

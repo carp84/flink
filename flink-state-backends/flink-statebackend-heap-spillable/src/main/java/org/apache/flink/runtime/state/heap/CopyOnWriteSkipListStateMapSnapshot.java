@@ -117,8 +117,8 @@ public class CopyOnWriteSkipListStateMapSnapshot<K, N, S>
 		TypeSerializer<S> stateSerializer,
 		@Nonnull DataOutputView dov,
 		@Nonnull StateSnapshotTransformer<S> stateSnapshotTransformer) throws IOException {
-		CopyOnWriteSkipListStateMap.SkipListValueSerializer<S> skipListValueSerializer =
-			new CopyOnWriteSkipListStateMap.SkipListValueSerializer<>(stateSerializer);
+		SkipListValueSerializer<S> skipListValueSerializer =
+			new SkipListValueSerializer<>(stateSerializer);
 
 		// 1. iterates nodes to get size after transform
 		SnapshotNodeIterator transformNodeIterator = new SnapshotNodeIterator(true);
