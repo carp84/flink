@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,29 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.flink.core.memory;
-
-import org.apache.flink.annotation.Internal;
-
-import java.nio.ByteBuffer;
+package org.apache.flink.runtime.state.heap.space;
 
 /**
- * Un-synchronized stream similar to Java's ByteArrayInputStream that also exposes the current position.
+ * constants.
  */
-@Internal
-public class ByteArrayInputStreamWithPos extends ByteBufferInputStreamWithPos {
-
-	private static final byte[] EMPTY = new byte[0];
-
-	public ByteArrayInputStreamWithPos() {
-		this(EMPTY);
-	}
-
-	public ByteArrayInputStreamWithPos(byte[] buffer) {
-		this(buffer, 0, buffer.length);
-	}
-
-	public ByteArrayInputStreamWithPos(byte[] buffer, int offset, int length) {
-		super(ByteBuffer.wrap(buffer), offset, length);
-	}
+public class Constants {
+	public static final int NO_SPACE = -1;
+	public static final int BUCKET_SIZE = 1024 * 1024;
+	public static final int FOUR_BYTES_BITS = 32;
+	public static final long FOUR_BYTES_MARK = 0xFFFFFFFFL;
 }
