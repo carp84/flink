@@ -35,17 +35,16 @@ import java.io.IOException;
 class SkipListValueSerializer<S> {
 
 	private final TypeSerializer<S> stateSerializer;
+
 	/** The reusable output serialization buffer. */
-	private DataOutputSerializer dos;
+	private final DataOutputSerializer dos;
 
 	SkipListValueSerializer(TypeSerializer<S> stateSerializer) {
 		this.stateSerializer = stateSerializer;
+		this.dos = new DataOutputSerializer(16);
 	}
 
 	byte[] serialize(S state) {
-		if (dos == null) {
-			dos = new DataOutputSerializer(16);
-		}
 		try {
 			stateSerializer.serialize(state, dos);
 		} catch (IOException e) {
