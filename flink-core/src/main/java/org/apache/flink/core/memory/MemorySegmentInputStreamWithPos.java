@@ -45,29 +45,19 @@ public class MemorySegmentInputStreamWithPos extends InputStream {
 
 	@Override
 	public int read(@Nonnull byte[] b, int off, int len) {
-		Preconditions.checkNotNull(b);
-
-		if (off < 0 || len < 0 || len > b.length - off) {
-			throw new IndexOutOfBoundsException();
-		}
-
 		if (position >= count) {
 			return -1; // signal EOF
 		}
-
-		int available = count - position;
-
-		if (len > available) {
-			len = available;
-		}
-
 		if (len <= 0) {
 			return 0;
 		}
 
-		segment.copyTo(position, MemorySegmentFactory.wrap(b), off, len);
-		position += len;
-		return len;
+		final int numBytes = Math.min(count - position, len);
+
+		segment.get(position, b, off, numBytes);
+		position += numBytes;
+
+		return numBytes;
 	}
 
 	@Override
