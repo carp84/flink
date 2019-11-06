@@ -19,13 +19,11 @@
 package org.apache.flink.runtime.state.heap;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.core.memory.ByteArrayOutputStreamWithPos;
-import org.apache.flink.core.memory.ByteBufferInputStreamWithPos;
-import org.apache.flink.core.memory.DataInputViewStreamWrapper;
-import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
+import org.apache.flink.core.memory.DataInputDeserializer;
+import org.apache.flink.core.memory.DataOutputSerializer;
+import org.apache.flink.core.memory.MemorySegment;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * Serializer/deserializer used for conversion between state and skip list value.
@@ -36,39 +34,44 @@ import java.nio.ByteBuffer;
 class SkipListValueSerializer<S> {
 
 	private final TypeSerializer<S> stateSerializer;
-	private final ByteArrayOutputStreamWithPos outputStream;
-	private final DataOutputViewStreamWrapper outputView;
+	/** The reusable output serialization buffer. */
+	private DataOutputSerializer dos;
+	/** The reusable input deserialization buffer. */
+	private DataInputDeserializer dis;
 
 	SkipListValueSerializer(TypeSerializer<S> stateSerializer) {
 		this.stateSerializer = stateSerializer;
-		this.outputStream = new ByteArrayOutputStreamWithPos();
-		this.outputView = new DataOutputViewStreamWrapper(outputStream);
 	}
 
 	byte[] serialize(S state) {
+		if (dos == null) {
+			dos = new DataOutputSerializer(16);
+		}
 		try {
-			outputStream.reset();
-			stateSerializer.serialize(state, outputView);
-
-			return outputStream.toByteArray();
+			stateSerializer.serialize(state, dos);
 		} catch (IOException e) {
 			throw new RuntimeException("serialize key and namespace failed", e);
 		}
+		byte[] ret = dos.getCopyOfBuffer();
+		dos.clear();
+		return ret;
 	}
 
 	/**
 	 * Deserialize the state from the byte buffer which stores skip list value.
 	 *
-	 * @param byteBuffer the byte buffer which stores the skip list value.
+	 * @param memorySegment the memory segment which stores the skip list value.
 	 * @param offset     the start position of the skip list value in the byte buffer.
 	 * @param len        length of the skip list value.
 	 */
-	S deserializeState(ByteBuffer byteBuffer, int offset, int len) {
+	S deserializeState(MemorySegment memorySegment, int offset, int len) {
+		if (dis != null) {
+			dis.setBuffer(memorySegment.getArray(), offset, len);
+		} else {
+			dis = new DataInputDeserializer(memorySegment.getArray(), offset, len);
+		}
 		try {
-			ByteBufferInputStreamWithPos inputStream = new ByteBufferInputStreamWithPos(byteBuffer, offset, len);
-			DataInputViewStreamWrapper inputView = new DataInputViewStreamWrapper(inputStream);
-
-			return stateSerializer.deserialize(inputView);
+			return stateSerializer.deserialize(dis);
 		} catch (IOException e) {
 			throw new RuntimeException("deserialize state failed", e);
 		}

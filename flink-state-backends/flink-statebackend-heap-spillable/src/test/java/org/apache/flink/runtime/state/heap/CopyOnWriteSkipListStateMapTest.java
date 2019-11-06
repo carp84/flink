@@ -30,6 +30,8 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
+import org.apache.flink.core.memory.MemorySegment;
+import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.state.StateEntry;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
 import org.apache.flink.runtime.state.StateTransformationFunction;
@@ -49,7 +51,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -1370,11 +1371,11 @@ public class CopyOnWriteSkipListStateMapTest extends TestLogger {
 		byte[] keyBytes = skipListKeySerializer.serialize(key, namespace);
 		byte[] constructedKeyBytes = new byte[keyBytes.length + 1];
 		System.arraycopy(keyBytes, 0, constructedKeyBytes, 1, keyBytes.length);
-		ByteBuffer keyByteBuffer = ByteBuffer.wrap(constructedKeyBytes);
+		MemorySegment keySegment = MemorySegmentFactory.wrap(constructedKeyBytes);
 		int keyLen = keyBytes.length;
 		byte[] value = skipListValueSerializer.serialize(valueString);
-		stateMap.putValue(keyByteBuffer, 1, keyLen, value, false);
-		String state = stateMap.getNode(keyByteBuffer, 1, keyLen);
+		stateMap.putValue(keySegment, 1, keyLen, value, false);
+		String state = stateMap.getNode(keySegment, 1, keyLen);
 		assertThat(state, is(valueString));
 	}
 

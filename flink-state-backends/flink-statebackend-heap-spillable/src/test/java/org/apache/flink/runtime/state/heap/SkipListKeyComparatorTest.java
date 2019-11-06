@@ -27,12 +27,13 @@ import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.core.memory.MemorySegment;
+import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.util.TestLogger;
 
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertTrue;
 
@@ -145,8 +146,8 @@ public class SkipListKeyComparatorTest extends TestLogger {
 	private <K, N> void verifySkipListKey(
 		SkipListKeySerializer<K, N> keySerializer,
 		K key1, N namespace1, K key2, N namespace2, int result) {
-		ByteBuffer b1 = ByteBuffer.wrap(keySerializer.serialize(key1, namespace1));
-		ByteBuffer b2 = ByteBuffer.wrap(keySerializer.serialize(key2, namespace2));
+		MemorySegment b1 = MemorySegmentFactory.wrap(keySerializer.serialize(key1, namespace1));
+		MemorySegment b2 = MemorySegmentFactory.wrap(keySerializer.serialize(key2, namespace2));
 		int actual = SkipListKeyComparator.compareTo(b1, 0, b2, 0);
 		assertTrue((result == 0 && actual == 0) || (result * actual > 0));
 	}
@@ -157,7 +158,7 @@ public class SkipListKeyComparatorTest extends TestLogger {
 		byte[] n = keySerializer.serializeNamespace(convertByteString(namespace));
 		byte[] k = keySerializer.serialize(convertByteString(targetKey), convertByteString(targetNamespace));
 		int actual = SkipListKeyComparator.compareNamespaceAndNode(
-			ByteBuffer.wrap(n), 0, n.length, ByteBuffer.wrap(k), 0);
+			MemorySegmentFactory.wrap(n), 0, n.length, MemorySegmentFactory.wrap(k), 0);
 		assertTrue((result == 0 && actual == 0) || (result * actual > 0));
 	}
 
