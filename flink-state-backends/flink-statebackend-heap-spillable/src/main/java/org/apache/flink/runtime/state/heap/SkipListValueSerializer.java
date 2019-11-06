@@ -19,9 +19,10 @@
 package org.apache.flink.runtime.state.heap;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.core.memory.DataInputDeserializer;
+import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputSerializer;
 import org.apache.flink.core.memory.MemorySegment;
+import org.apache.flink.core.memory.MemorySegmentInputStreamWithPos;
 
 import java.io.IOException;
 
@@ -36,8 +37,6 @@ class SkipListValueSerializer<S> {
 	private final TypeSerializer<S> stateSerializer;
 	/** The reusable output serialization buffer. */
 	private DataOutputSerializer dos;
-	/** The reusable input deserialization buffer. */
-	private DataInputDeserializer dis;
 
 	SkipListValueSerializer(TypeSerializer<S> stateSerializer) {
 		this.stateSerializer = stateSerializer;
@@ -65,13 +64,11 @@ class SkipListValueSerializer<S> {
 	 * @param len        length of the skip list value.
 	 */
 	S deserializeState(MemorySegment memorySegment, int offset, int len) {
-		if (dis != null) {
-			dis.setBuffer(memorySegment.getArray(), offset, len);
-		} else {
-			dis = new DataInputDeserializer(memorySegment.getArray(), offset, len);
-		}
+		final MemorySegmentInputStreamWithPos src = new MemorySegmentInputStreamWithPos(memorySegment, offset, len);
+		final DataInputViewStreamWrapper in = new DataInputViewStreamWrapper(src);
+
 		try {
-			return stateSerializer.deserialize(dis);
+			return stateSerializer.deserialize(in);
 		} catch (IOException e) {
 			throw new RuntimeException("deserialize state failed", e);
 		}
