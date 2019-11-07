@@ -50,6 +50,12 @@ public class ByteArrayInputStreamWithPosTest {
 	}
 
 	@Test
+	public void testGetWithTargetArrayOverflow() {
+		thrown.expect(IndexOutOfBoundsException.class);
+		stream.read(new byte[0], 0, 2);
+	}
+
+	@Test
 	public void testGetWithEOF() {
 		drainStream(stream);
 		int read = stream.read(new byte[1], 0, 1);
