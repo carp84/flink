@@ -24,7 +24,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
-import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.TestLocalRecoveryConfig;
@@ -33,7 +32,6 @@ import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
-import org.rocksdb.DBOptions;
 import org.rocksdb.RocksDB;
 
 import java.io.File;
@@ -48,15 +46,14 @@ public final class RocksDBTestUtils {
 			File instanceBasePath,
 			TypeSerializer<K> keySerializer) {
 
-		final DBOptions dbOptions = PredefinedOptions.DEFAULT.createDBOptions();
-		dbOptions.setCreateIfMissing(true);
+		final RocksDBOptionsContainer optionsContainer = new RocksDBOptionsContainer();
 
 		return new RocksDBKeyedStateBackendBuilder<>(
 			"no-op",
 			ClassLoader.getSystemClassLoader(),
 			instanceBasePath,
-			dbOptions,
-			stateName -> PredefinedOptions.DEFAULT.createColumnOptions(),
+			optionsContainer,
+			stateName -> optionsContainer.getColumnOptions(),
 			new KvStateRegistry().createTaskRegistry(new JobID(), new JobVertexID()),
 			keySerializer,
 			2,
@@ -78,14 +75,13 @@ public final class RocksDBTestUtils {
 			ColumnFamilyHandle defaultCFHandle,
 			ColumnFamilyOptions columnFamilyOptions) {
 
-		final DBOptions dbOptions = PredefinedOptions.DEFAULT.createDBOptions();
-		dbOptions.setCreateIfMissing(true);
+		final RocksDBOptionsContainer optionsContainer = new RocksDBOptionsContainer();
 
 		return new RocksDBKeyedStateBackendBuilder<>(
 				"no-op",
 				ClassLoader.getSystemClassLoader(),
 				instanceBasePath,
-				dbOptions,
+				optionsContainer,
 				stateName -> columnFamilyOptions,
 				new KvStateRegistry().createTaskRegistry(new JobID(), new JobVertexID()),
 				keySerializer,
