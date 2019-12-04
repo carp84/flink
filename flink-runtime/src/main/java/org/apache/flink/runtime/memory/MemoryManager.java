@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
-import java.util.Deque;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -85,7 +84,7 @@ public class MemoryManager {
 	private final Map<Object, Map<MemoryType, Long>> reservedMemory;
 
 	/** Reserved closeable shared objects for state backends fetched from this memory manager. */
-	private final AtomicReference<Deque<AutoCloseable>> stateBackendSharedObjects;
+	private final AtomicReference<AutoCloseable> stateBackendSharedObjects;
 
 	/** Helper to ensure the shared objects only initialized once. */
 	private final AtomicBoolean lazyInitializeSharedObjectHelper;
@@ -164,10 +163,7 @@ public class MemoryManager {
 				segments.clear();
 			}
 			allocatedSegments.clear();
-			Deque<AutoCloseable> autoCloseables = getStateBackendSharedObjects().get();
-			while (autoCloseables != null && !autoCloseables.isEmpty()) {
-				IOUtils.closeQuietly(autoCloseables.pop());
-			}
+			IOUtils.closeQuietly(stateBackendSharedObjects.get());
 		}
 	}
 
@@ -633,12 +629,12 @@ public class MemoryManager {
 		return segment.isOffHeap() ? MemoryType.OFF_HEAP : MemoryType.HEAP;
 	}
 
-	public AtomicReference<Deque<AutoCloseable>> getStateBackendSharedObjects() {
-		return stateBackendSharedObjects;
+	public AutoCloseable getStateBackendSharedObject() {
+		return stateBackendSharedObjects.get();
 	}
 
-	public AtomicBoolean getLazyInitializeSharedObjectHelper() {
-		return lazyInitializeSharedObjectHelper;
+	public boolean setStateBackendSharedObjects(AutoCloseable sharedObjects) {
+		return stateBackendSharedObjects.compareAndSet(null, sharedObjects);
 	}
 
 	/** Memory segment allocation request. */

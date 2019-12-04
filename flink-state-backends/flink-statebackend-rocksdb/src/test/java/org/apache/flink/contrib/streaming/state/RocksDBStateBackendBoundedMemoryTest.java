@@ -37,15 +37,18 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.rocksdb.LRUCache;
+import org.rocksdb.Cache;
 import org.rocksdb.WriteBufferManager;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Deque;
+
+import static org.hamcrest.Matchers.is;
 
 /**
  * Tests to verify memory bounded for rocksDB state backend.
+ * <p/>
+ * TODO Add test case for concurrency
  */
 public class RocksDBStateBackendBoundedMemoryTest {
 
@@ -67,7 +70,6 @@ public class RocksDBStateBackendBoundedMemoryTest {
 	@After
 	public void shutDown() {
 		this.memoryManager.shutdown();
-		Assert.assertTrue(memoryManager.getStateBackendSharedObjects().get().isEmpty());
 	}
 
 	@Test
@@ -75,8 +77,8 @@ public class RocksDBStateBackendBoundedMemoryTest {
 		DummyEnvironment env = new DummyEnvironment();
 		env.setMemoryManager(memoryManager);
 
-		Deque<AutoCloseable> sharedObjects = memoryManager.getStateBackendSharedObjects().get();
-		Assert.assertNull(sharedObjects);
+		AutoCloseable sharedObject = memoryManager.getStateBackendSharedObject();
+		Assert.assertNull(sharedObject);
 
 		Configuration configuration = new Configuration();
 		configuration.setString(RocksDBOptions.BOUNDED_MEMORY_SIZE, "128MB");
@@ -86,35 +88,35 @@ public class RocksDBStateBackendBoundedMemoryTest {
 		RocksDBStateBackend rocksDBStateBackend1 = originalStateBackend.configure(configuration, Thread.currentThread().getContextClassLoader());
 		AbstractKeyedStateBackend keyedStateBackend1 = createKeyedStateBackend(rocksDBStateBackend1, env);
 
-		sharedObjects = memoryManager.getStateBackendSharedObjects().get();
-		Assert.assertNotNull(sharedObjects);
+		sharedObject = memoryManager.getStateBackendSharedObject();
+		Assert.assertTrue("The shared object should be a RocksDBSharedObject instance but actually not",
+			sharedObject instanceof RocksDBSharedObject);
 
-		// we create objects as the order of LRUCache -> WriteBufferManager, and we should get them in reverse order.
-		Assert.assertTrue(sharedObjects.getFirst() instanceof WriteBufferManager);
-		Assert.assertTrue(sharedObjects.getLast() instanceof LRUCache);
-		Assert.assertEquals(2, sharedObjects.size());
-
-		LRUCache lruCache = (LRUCache) sharedObjects.getLast();
-		WriteBufferManager writeBufferManager = (WriteBufferManager) sharedObjects.getFirst();
+		Cache cache = ((RocksDBSharedObject) sharedObject).getCache();
+		WriteBufferManager writeBufferManager = ((RocksDBSharedObject) sharedObject).getWriteBufferManager();
 
 		RocksDBStateBackend rocksDBStateBackend2 = originalStateBackend.configure(configuration, Thread.currentThread().getContextClassLoader());
 		AbstractKeyedStateBackend keyedStateBackend2 = createKeyedStateBackend(rocksDBStateBackend2, env);
 
-		try {
-			// Another keyed state backend is created but only initialized once for cache and write buffer manager.
-			sharedObjects = memoryManager.getStateBackendSharedObjects().get();
-			Assert.assertTrue(sharedObjects.getFirst() instanceof WriteBufferManager);
-			Assert.assertTrue(sharedObjects.getLast() instanceof LRUCache);
-			Assert.assertEquals(2, sharedObjects.size());
-			Assert.assertEquals(lruCache, sharedObjects.getLast());
-			Assert.assertEquals(writeBufferManager, sharedObjects.getFirst());
-		} finally {
-			keyedStateBackend1.close();
-			keyedStateBackend2.close();
-			// even keyed state backend closed, cache and write buffer manager would not be disposed.
-			Assert.assertTrue(lruCache.isOwningHandle());
-			Assert.assertTrue(writeBufferManager.isOwningHandle());
-		}
+		// Another keyed state backend is created but only initialized once for cache and write buffer manager.
+		sharedObject = memoryManager.getStateBackendSharedObject();
+		Assert.assertTrue("The shared object should be a RocksDBSharedObject instance but actually not",
+			sharedObject instanceof RocksDBSharedObject);
+		Assert.assertThat(((RocksDBSharedObject) sharedObject).getCache(), is(cache));
+		Assert.assertThat(((RocksDBSharedObject) sharedObject).getWriteBufferManager(), is(writeBufferManager));
+
+		// even keyed state backend closed, cache and write buffer manager would not be disposed.
+		// TODO extract this out into a specific test case.
+		keyedStateBackend1.close();
+		keyedStateBackend2.close();
+		Assert.assertTrue(cache.isOwningHandle());
+		Assert.assertTrue(writeBufferManager.isOwningHandle());
+
+		// make sure necessary clean up happened after memory manager shutdown
+		// TODO extract this out into a specific test case.
+		memoryManager.shutdown();
+		Assert.assertFalse(cache.isOwningHandle());
+		Assert.assertFalse(writeBufferManager.isOwningHandle());
 	}
 
 	private AbstractKeyedStateBackend createKeyedStateBackend(RocksDBStateBackend rocksDBStateBackend, Environment env) throws IOException {
