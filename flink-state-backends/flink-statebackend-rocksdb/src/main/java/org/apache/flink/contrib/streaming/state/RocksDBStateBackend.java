@@ -28,7 +28,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.execution.Environment;
-import org.apache.flink.runtime.memory.MemoryManager;
+import org.apache.flink.runtime.memory.OpaqueMemoryResource;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.AbstractStateBackend;
@@ -55,11 +55,9 @@ import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.Cache;
 import org.rocksdb.ColumnFamilyOptions;
 import org.rocksdb.DBOptions;
-import org.rocksdb.LRUCache;
 import org.rocksdb.NativeLibraryLoader;
 import org.rocksdb.RocksDB;
 import org.rocksdb.TableFormatConfig;
-import org.rocksdb.WriteBufferManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -508,24 +506,16 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 		DBOptions dbOptions = getDbOptions();
 		Function<String, ColumnFamilyOptions> createColumnOptions;
 
-		if (isBoundedMemoryEnabled()) {
-			RocksDBSharedObjects rocksDBSharedObjects;
-			MemoryManager memoryManager = env.getMemoryManager();
-			// only initialized LRUCache and write buffer manager once.
-			// we would not dispose the cache and write buffer manager during disposing state backend
-			// as the same objects are shared by every RocksDB instance per slot.
-			while ((rocksDBSharedObjects = (RocksDBSharedObjects) memoryManager.getStateBackendSharedObject()) == null) {
-				if (memoryManager.getLazyInitializeSharedObjectHelper().compareAndSet(false, true)) {
-					Cache lruCache = new LRUCache(getTotalMemoryPerSlot(), -1, false, getHighPriPoolRatio());
-					WriteBufferManager writeBufferManager = new WriteBufferManager((long) (getTotalMemoryPerSlot() * getWriteBufferRatio()), lruCache);
+		final OpaqueMemoryResource<RocksDBSharedResources> sharedResources = RocksDBOperationUtils
+				.allocateSharedCachesIfConfigured(memoryConfiguration, env.getMemoryManager(), LOG);
 
-					rocksDBSharedObjects = new RocksDBSharedObjects(lruCache, writeBufferManager);
-					memoryManager.setStateBackendSharedObject(rocksDBSharedObjects);
-				}
-			}
+		if (sharedResources != null) {
+			LOG.info("Obtained shared RocksDB cache of size {} bytes", sharedResources.getSize());
 
-			Cache blockCache = checkNotNull(rocksDBSharedObjects.getCache());
-			dbOptions.setWriteBufferManager(checkNotNull(rocksDBSharedObjects.getWriteBufferManager()));
+			final RocksDBSharedResources rocksResources = sharedResources.getResourceHandle();
+			final Cache blockCache = rocksResources.getCache();
+
+			dbOptions.setWriteBufferManager(rocksResources.getWriteBufferManager());
 
 			createColumnOptions = stateName -> {
 				ColumnFamilyOptions columnOptions = getColumnOptions();
@@ -564,7 +554,8 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 			stateHandles,
 			keyGroupCompressionDecorator,
 			cancelStreamRegistry
-		).setEnableIncrementalCheckpointing(isIncrementalCheckpointsEnabled())
+		)
+			.setEnableIncrementalCheckpointing(isIncrementalCheckpointsEnabled())
 			.setEnableTtlCompactionFilter(isTtlCompactionFilterEnabled())
 			.setNumberOfTransferingThreads(getNumberOfTransferThreads())
 			.setNativeMetricOptions(getMemoryWatcherOptions());
