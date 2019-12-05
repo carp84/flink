@@ -87,7 +87,7 @@ public class RocksDBOptions {
 				DefaultConfigurableOptionsFactory.class.getName()));
 
 	public static final ConfigOption<Long> FIX_PER_SLOT_MEMORY_SIZE = ConfigOptions
-		.key("state.backend.rocksdb.per-slot.total.memory")
+		.key("state.backend.rocksdb.memory.fixed-per-slot")
 		.longType()
 		.noDefaultValue()
 		.withDescription("The total memory size shared among all RocksDB instances per slot. " +
@@ -95,7 +95,7 @@ public class RocksDBOptions {
 			"If not set, each RocksDB state has its own memory caches (as controlled by the column family options).");
 
 	public static final ConfigOption<Double> WRITE_BUFFER_RATIO = ConfigOptions
-		.key("state.backend.rocksdb.write-buffer.ratio")
+		.key("state.backend.rocksdb.memory.write-buffer-ratio")
 		.doubleType()
 		.defaultValue(0.5)
 		.withDescription(String.format(
@@ -103,7 +103,7 @@ public class RocksDBOptions {
 			"This option only has an effect when %s is configured.", FIX_PER_SLOT_MEMORY_SIZE.key()));
 
 	public static final ConfigOption<Double> HIGH_PRIORITY_POOL_RATIO = ConfigOptions
-		.key("state.backend.rocksdb.high-prio-pool.ratio")
+		.key("state.backend.rocksdb.memory.high-prio-pool-ratio")
 		.doubleType()
 		.defaultValue(0.1)
 		.withDescription(String.format(
