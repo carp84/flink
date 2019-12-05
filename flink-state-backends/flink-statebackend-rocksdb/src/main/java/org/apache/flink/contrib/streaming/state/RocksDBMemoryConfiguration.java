@@ -29,6 +29,10 @@ import javax.annotation.Nullable;
  */
 public final class RocksDBMemoryConfiguration {
 
+	/** Flag whether to use the managed memory budget for RocksDB. Null is not set. */
+	@Nullable
+	private Boolean useManagedMemory;
+
 	/**The total memory for all RocksDB instances at this slot. Null is not set. */
 	@Nullable
 	private Long fixedMemoryPerSlot;
@@ -42,6 +46,10 @@ public final class RocksDBMemoryConfiguration {
 	private Double highPriorityPoolRatio;
 
 	// ------------------------------------------------------------------------
+
+	public void setUseManagedMemory(boolean useManagedMemory) {
+		this.useManagedMemory = useManagedMemory;
+	}
 
 	public void setFixedMemoryPerSlot(MemorySize fixedMemoryPerSlot) {
 		if (fixedMemoryPerSlot != null) {
@@ -68,6 +76,10 @@ public final class RocksDBMemoryConfiguration {
 		Preconditions.checkArgument(highPriorityPoolRatio > 0 && highPriorityPoolRatio < 1.0,
 			"High priority pool ratio %s must be in (0, 1)", highPriorityPoolRatio);
 		this.highPriorityPoolRatio = highPriorityPoolRatio;
+	}
+
+	public boolean isUsingManagedMemory() {
+		return useManagedMemory != null ? useManagedMemory : RocksDBOptions.USE_MANAGED_MEMORY.defaultValue();
 	}
 
 	public boolean isUsingFixedMemoryPerSlot() {

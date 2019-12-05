@@ -86,21 +86,34 @@ public class RocksDBOptions {
 				"The default options factory is %s, and it would read the configured options which provided in 'RocksDBConfigurableOptions'.",
 				DefaultConfigurableOptionsFactory.class.getName()));
 
+	public static final ConfigOption<Boolean> USE_MANAGED_MEMORY = ConfigOptions
+		.key("state.backend.rocksdb.memory.managed")
+		.booleanType()
+		.defaultValue(false)
+		.withDescription("If set, the RocksDB state backend will automatically configure itself to use the " +
+			"managed memory budget of the task slot, and divide the memory over write buffers, indexes, " +
+			"block caches, etc. That way, the state backend will not exceed the available memory, but use as much " +
+			"memory as it can.");
+
 	public static final ConfigOption<Long> FIX_PER_SLOT_MEMORY_SIZE = ConfigOptions
 		.key("state.backend.rocksdb.memory.fixed-per-slot")
 		.longType()
 		.noDefaultValue()
-		.withDescription("The total memory size shared among all RocksDB instances per slot. " +
-			"The memory divides over write buffers, indexes, and block caches. " +
-			"If not set, each RocksDB state has its own memory caches (as controlled by the column family options).");
+		.withDescription(String.format(
+			"The fixed total amount of memory, shared among all RocksDB instances per slot. " +
+			"This option overrides the '%s' option when configured. If neither this option, nor the '%s' option" +
+			"are set, then each RocksDB column family state has its own memory caches (as controlled by the column " +
+			"family options).", USE_MANAGED_MEMORY.key(), USE_MANAGED_MEMORY.key()));
 
 	public static final ConfigOption<Double> WRITE_BUFFER_RATIO = ConfigOptions
 		.key("state.backend.rocksdb.memory.write-buffer-ratio")
 		.doubleType()
 		.defaultValue(0.5)
 		.withDescription(String.format(
-			"The maximum amount of memory that write buffers may take , as a fraction of the total cache memory. " +
-			"This option only has an effect when %s is configured.", FIX_PER_SLOT_MEMORY_SIZE.key()));
+			"The maximum amount of memory that write buffers may take, as a fraction of the total cache memory. " +
+			"This option only has an effect when '%s' or '%s' are configured.",
+			USE_MANAGED_MEMORY.key(),
+			FIX_PER_SLOT_MEMORY_SIZE.key()));
 
 	public static final ConfigOption<Double> HIGH_PRIORITY_POOL_RATIO = ConfigOptions
 		.key("state.backend.rocksdb.memory.high-prio-pool-ratio")
@@ -108,6 +121,7 @@ public class RocksDBOptions {
 		.defaultValue(0.1)
 		.withDescription(String.format(
 				"The fraction of cache memory that is reserved for high-priority data like index, filter, and " +
-				"compression dictionary blocks. This option only has an effect when %s is configured.",
+				"compression dictionary blocks. This option only has an effect when '%s' or '%s' are configured.",
+				USE_MANAGED_MEMORY.key(),
 				FIX_PER_SLOT_MEMORY_SIZE.key()));
 }
