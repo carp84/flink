@@ -78,7 +78,7 @@ public class RocksDBStateBackendBoundedMemoryTest {
 		Assert.assertNull(memoryManager.getStateBackendSharedObject());
 
 		Configuration configuration = new Configuration();
-		configuration.setString(RocksDBOptions.BOUNDED_MEMORY_SIZE, "128MB");
+		configuration.setString(RocksDBOptions.FIX_PER_SLOT_MEMORY_SIZE, "128MB");
 		RocksDBStateBackend originalStateBackend = new RocksDBStateBackend(tempFolder.newFolder().toURI());
 		originalStateBackend.setDbStoragePath(tempFolder.newFolder().getAbsolutePath());
 
@@ -114,7 +114,7 @@ public class RocksDBStateBackendBoundedMemoryTest {
 		Assert.assertNull(memoryManager.getStateBackendSharedObject());
 
 		Configuration configuration = new Configuration();
-		configuration.setString(RocksDBOptions.BOUNDED_MEMORY_SIZE, "128MB");
+		configuration.setString(RocksDBOptions.FIX_PER_SLOT_MEMORY_SIZE, "128MB");
 		RocksDBStateBackend originalStateBackend = new RocksDBStateBackend(tempFolder.newFolder().toURI());
 		originalStateBackend.setDbStoragePath(tempFolder.newFolder().getAbsolutePath());
 		RocksDBStateBackend rocksDBStateBackend = originalStateBackend.configure(configuration, Thread.currentThread().getContextClassLoader());
@@ -141,7 +141,7 @@ public class RocksDBStateBackendBoundedMemoryTest {
 		Assert.assertNull(memoryManager.getStateBackendSharedObject());
 
 		Configuration configuration = new Configuration();
-		configuration.setString(RocksDBOptions.BOUNDED_MEMORY_SIZE, "128MB");
+		configuration.setString(RocksDBOptions.FIX_PER_SLOT_MEMORY_SIZE, "128MB");
 		RocksDBStateBackend originalStateBackend = new RocksDBStateBackend(tempFolder.newFolder().toURI());
 		originalStateBackend.setDbStoragePath(tempFolder.newFolder().getAbsolutePath());
 
