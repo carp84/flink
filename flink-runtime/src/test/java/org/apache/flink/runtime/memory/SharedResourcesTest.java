@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -42,6 +43,20 @@ public class SharedResourcesTest {
 	}
 
 	@Test
+	public void testPartialReleaseDoesNotRemoveFromMap() throws Exception {
+		final SharedResources resources = new SharedResources();
+		final String type = "theType";
+		final Object leaseHolder = new Object();
+		final Object leaseHolder2 = new Object();
+		resources.getOrAllocateSharedResource(type, leaseHolder, TestResource::new, 100);
+		resources.getOrAllocateSharedResource(type, leaseHolder2, TestResource::new, 100);
+
+		resources.release(type, leaseHolder);
+
+		assertNotEquals(0, resources.getNumResources());
+	}
+
+	@Test
 	public void testLastReleaseRemovesFromMap() throws Exception {
 		final SharedResources resources = new SharedResources();
 		final String type = "theType";
@@ -51,6 +66,23 @@ public class SharedResourcesTest {
 		resources.release(type, leaseHolder);
 
 		assertEquals(0, resources.getNumResources());
+	}
+
+	@Test
+	public void testPartialReleaseDoesNotDisposesResource() throws Exception {
+		final SharedResources resources = new SharedResources();
+		final String type = "theType";
+		final Object leaseHolder = new Object();
+		final Object leaseHolder2 = new Object();
+
+		final TestResource tr = resources
+			.getOrAllocateSharedResource(type, leaseHolder, TestResource::new, 100)
+			.resourceHandle();
+		resources.getOrAllocateSharedResource(type, leaseHolder2, TestResource::new, 100);
+
+		resources.release(type, leaseHolder);
+
+		assertFalse(tr.closed);
 	}
 
 	@Test

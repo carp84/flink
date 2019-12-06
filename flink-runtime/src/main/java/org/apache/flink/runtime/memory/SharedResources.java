@@ -160,7 +160,7 @@ final class SharedResources {
 		boolean removeLeaseHolder(Object leaseHolder) {
 			assert !disposed;
 			leaseHolders.remove(leaseHolder);
-			return  leaseHolders.isEmpty();
+			return leaseHolders.isEmpty();
 		}
 
 		void dispose() throws Exception {

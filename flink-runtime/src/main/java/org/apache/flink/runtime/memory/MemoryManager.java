@@ -611,12 +611,11 @@ public class MemoryManager {
 
 	/**
 	 * Acquires a shared memory resource, identified by a type string. If the resource already exists, this
-	 * returns a descriptor to the resource. If the resource does not yet exist, the given memory fraction
-	 * is reserved and the resource is initialized with that size.
+	 * returns a descriptor to the resource. If the resource does not yet exist, the resource is initialized
+	 * with the given size.
 	 *
-	 * <p>The memory for the resource is reserved from the memory budget of this memory manager (thus
-	 * determining the size of the resource), but resource itself is opaque, meaning the memory manager
-	 * does not understand its structure.
+	 * <p>The memory for the resource is external, meaning the memory manager doesn't understand its structure
+	 * and won't count it into managed memory. Please be super careful to get shared memory in this way.
 	 *
 	 * <p>The OpaqueMemoryResource object returned from this method must be closed once not used any further.
 	 * Once all acquisitions have closed the object, the resource itself is closed.
