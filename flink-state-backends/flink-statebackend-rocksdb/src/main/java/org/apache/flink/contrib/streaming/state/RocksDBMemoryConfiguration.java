@@ -24,10 +24,12 @@ import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
+import java.io.Serializable;
+
 /**
  * The settings regarding RocksDBs memory usage.
  */
-public final class RocksDBMemoryConfiguration {
+public final class RocksDBMemoryConfiguration implements Serializable {
 
 	/** Flag whether to use the managed memory budget for RocksDB. Null is not set. */
 	@Nullable

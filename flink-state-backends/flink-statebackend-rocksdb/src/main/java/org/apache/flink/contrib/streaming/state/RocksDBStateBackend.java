@@ -506,8 +506,14 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 		DBOptions dbOptions = getDbOptions();
 		Function<String, ColumnFamilyOptions> createColumnOptions;
 
-		final OpaqueMemoryResource<RocksDBSharedResources> sharedResources = RocksDBOperationUtils
+		OpaqueMemoryResource<RocksDBSharedResources> sharedResources;
+		try {
+			sharedResources = RocksDBOperationUtils
 				.allocateSharedCachesIfConfigured(memoryConfiguration, env.getMemoryManager(), LOG);
+		} catch (UnsupportedOperationException e) {
+			// If we cannot get memory manager, fallback to the non-sharing resource way.
+			sharedResources = null;
+		}
 
 		if (sharedResources != null) {
 			LOG.info("Obtained shared RocksDB cache of size {} bytes", sharedResources.getSize());
