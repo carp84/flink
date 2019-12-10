@@ -522,7 +522,7 @@ public class RocksDBStateBackendConfigTest {
 		rocksDbBackend = rocksDbBackend.configure(config, getClass().getClassLoader());
 
 		assertTrue(rocksDbBackend.getRocksDBOptions() instanceof TestOptionsFactory);
-		assertTrue(rocksDbBackend.getOptions() instanceof TestOptionsFactory);
+		assertTrue(rocksDbBackend.getOptions() instanceof OptionsFactoryAdapter);
 
 		try (RocksDBResourceContainer optionsContainer = rocksDbBackend.createOptionsAndResourceContainer()) {
 			DBOptions dbOptions = optionsContainer.getDbOptions();
