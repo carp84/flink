@@ -20,6 +20,8 @@ package org.apache.flink.runtime.state.ttl;
 
 import org.apache.flink.api.common.state.State;
 import org.apache.flink.api.common.state.StateDescriptor;
+import org.apache.flink.runtime.state.VoidNamespace;
+import org.apache.flink.runtime.state.heap.AbstractHeapState;
 import org.apache.flink.runtime.state.internal.InternalKvState;
 
 import java.util.Objects;
@@ -37,6 +39,7 @@ public abstract class TtlStateTestContextBase<S extends InternalKvState<?, Strin
     GV getUpdateExpired;
 
     public GV emptyValue = null;
+    public Object currentNamespace = VoidNamespace.INSTANCE;
 
     abstract void initTestValues();
 
@@ -47,6 +50,10 @@ public abstract class TtlStateTestContextBase<S extends InternalKvState<?, Strin
     public abstract GV get() throws Exception;
 
     public abstract Object getOriginal() throws Exception;
+
+    public boolean isOriginalNull() throws Exception {
+        return getOriginal() == null;
+    }
 
     public boolean isOriginalEmptyValue() throws Exception {
         return Objects.equals(emptyValue, getOriginal());
@@ -59,5 +66,20 @@ public abstract class TtlStateTestContextBase<S extends InternalKvState<?, Strin
     @Override
     public String toString() {
         return this.getClass().getSimpleName();
+    }
+
+    public void setCurrentNamespace(Object currentNamespace) {
+        this.currentNamespace = currentNamespace;
+    }
+
+    /**
+     * Util method for testing incremental clean up for heap states.
+     *
+     * @param heapState the {@link AbstractHeapState} to check against
+     * @return true if state value of the current key is NULL.
+     */
+    @SuppressWarnings("unchecked")
+    boolean isValueOfCurrentKeyNull(AbstractHeapState heapState) {
+        return heapState.getStateTable().get(currentNamespace) == null;
     }
 }

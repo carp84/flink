@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state.ttl;
 
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.runtime.state.heap.AbstractHeapState;
 
 import org.apache.flink.shaded.guava18.com.google.common.collect.Sets;
 
@@ -76,6 +77,15 @@ class TtlMapStateAllEntriesTestContext
         return ttlState.original.entries() == null
                 ? Collections.emptySet()
                 : ttlState.original.entries();
+    }
+
+    @Override
+    public boolean isOriginalNull() throws Exception {
+        if (ttlState.original instanceof AbstractHeapState) {
+            return isValueOfCurrentKeyNull((AbstractHeapState) ttlState.original);
+        } else {
+            return ttlState.original.entries() == null;
+        }
     }
 
     @Override

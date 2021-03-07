@@ -55,6 +55,11 @@ abstract class TtlListStateTestContextBase<T>
         return ttlState.original.get() == null ? emptyValue : ttlState.original.get();
     }
 
+    @Override
+    public boolean isOriginalNull() throws Exception {
+        return ttlState.original.get() == null;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <US extends State, SV> StateDescriptor<US, SV> createStateDescriptor() {

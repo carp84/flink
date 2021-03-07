@@ -22,6 +22,7 @@ import org.apache.flink.api.common.state.State;
 import org.apache.flink.api.common.state.StateDescriptor;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
+import org.apache.flink.runtime.state.heap.AbstractHeapState;
 
 /** Test suite for {@link TtlValueState}. */
 class TtlValueStateTestContext
@@ -61,5 +62,14 @@ class TtlValueStateTestContext
     @Override
     public Object getOriginal() throws Exception {
         return ttlState.original.value();
+    }
+
+    @Override
+    public boolean isOriginalNull() throws Exception {
+        if (ttlState.original instanceof AbstractHeapState) {
+            return isValueOfCurrentKeyNull((AbstractHeapState) ttlState.original);
+        } else {
+            return ttlState.original.value() == null;
+        }
     }
 }

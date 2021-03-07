@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.state.ttl;
 
+import org.apache.flink.runtime.state.heap.AbstractHeapState;
+
 /** Test suite for per element methods of {@link TtlMapState}. */
 class TtlMapStatePerElementTestContext extends TtlMapStateTestContext<String, String> {
     private static final int TEST_KEY = 1;
@@ -52,5 +54,14 @@ class TtlMapStatePerElementTestContext extends TtlMapStateTestContext<String, St
     @Override
     public Object getOriginal() throws Exception {
         return ttlState.original.get(TEST_KEY);
+    }
+
+    @Override
+    public boolean isOriginalNull() throws Exception {
+        if (ttlState.original instanceof AbstractHeapState) {
+            return isValueOfCurrentKeyNull((AbstractHeapState) ttlState.original);
+        } else {
+            return ttlState.original.get(TEST_KEY) == null;
+        }
     }
 }
