@@ -134,7 +134,8 @@ class TtlMapState<K, N, UK, UV>
     @Nullable
     @Override
     public Map<UK, TtlValue<UV>> getUnexpiredOrNull(@Nonnull Map<UK, TtlValue<UV>> ttlValue) {
-        if (ttlValue.size() == 0) {
+        // the remove operation will clear the whole state if the list becomes empty after init
+        if (ttlValue.isEmpty()) {
             return ttlValue;
         }
         Map<UK, TtlValue<UV>> unexpired = new HashMap<>();
@@ -147,10 +148,11 @@ class TtlMapState<K, N, UK, UV>
                 unexpired.put(e.getKey(), valueSerializer.copy(e.getValue()));
             }
         }
-        if (unexpired.size() == 0) {
-            return null;
+        if (!unexpired.isEmpty()) {
+            return unexpired;
         } else {
-            return ttlValue.size() == unexpired.size() ? ttlValue : unexpired;
+            // map is not empty but all values expired
+            return null;
         }
     }
 
